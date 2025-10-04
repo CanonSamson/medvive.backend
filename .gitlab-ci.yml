@@ -1,0 +1,201 @@
+stages:
+  - build
+  - deploy
+
+docker-build:
+  image: docker:24.0
+  stage: build
+  services:
+    - docker:24.0-dind
+  variables:
+    DOCKER_TLS_CERTDIR: ""
+    DOCKER_HOST: "tcp://docker:2375"
+    BUILDX_VERSION: "v0.12.1"
+    DOCKER_BUILDKIT: 1
+  before_script:
+    - apk add --no-cache curl wget
+    - |
+      timeout 30s sh -c "until docker info > /dev/null 2>&1; do echo 'Waiting for docker to be ready...'; sleep 1; done"
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
+    - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+    - mkdir -p ~/.docker/cli-plugins/
+    - wget -O ~/.docker/cli-plugins/docker-buildx "https://github.com/docker/buildx/releases/download/${BUILDX_VERSION}/buildx-${BUILDX_VERSION}.linux-amd64"
+    - chmod +x ~/.docker/cli-plugins/docker-buildx
+    - docker buildx create --use --name mybuilder --driver docker-container --driver-opt network=host
+    - docker buildx inspect --bootstrap
+  script:
+    - |
+      TAG=$CI_COMMIT_SHA
+      VERSION=$(date +%Y.%m.%d)-${CI_COMMIT_SHA:0:8}
+      
+      # Build and push main image
+      docker buildx build --pull --push \
+        --platform linux/amd64,linux/arm64 \
+        --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
+        --build-arg VCS_REF=${CI_COMMIT_SHA} \
+        --build-arg VERSION=${VERSION} \
+        -t "$CI_REGISTRY_IMAGE:${TAG}" \
+        -t "$CI_REGISTRY_IMAGE:${VERSION}" \
+        -t "$CI_REGISTRY_IMAGE:latest" .
+  after_script:
+    - docker buildx rm mybuilder || true
+  rules:
+    - if: $CI_COMMIT_BRANCH
+      exists:
+        - Dockerfile
+
+.Deploy:Swarm: &Deploy_Swarm
+  stage: deploy
+  image: docker:24.0
+  cache: {}
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+  before_script:
+    - export DOCKER_TLS_VERIFY=1
+    - export TAG=$CI_COMMIT_SHA
+    - mkdir -p ~/.docker
+    - echo "$TLSCACERT" > ~/.docker/ca.pem
+    - echo "$TLSCERT" > ~/.docker/cert.pem
+    - echo "$TLSKEY" > ~/.docker/key.pem
+    - chmod 600 ~/.docker/*.pem
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
+  script:
+    - |
+      # Create environment file
+      cat > .env << EOF
+      TZ=${TZ}
+      STACK_NAME=${STACK_NAME}
+      NATS_URL=${NATS_URL}
+      OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT}
+      OTEL_EXPORTER_OTLP_HEADERS=${OTEL_EXPORTER_OTLP_HEADERS}
+      OTEL_SERVICE_NAME=${OTEL_SERVICE_NAME}
+      EMAIL_SERVICE=${EMAIL_SERVICE}
+      EMAIL_USER=${EMAIL_USER}
+      JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      EMAIL_PASSWORD=${EMAIL_PASSWORD}
+      NOTIFICATION_WORKER_SERVICE_URL=${NOTIFICATION_WORKER_SERVICE_URL}
+      DATABASE_URL=${DATABASE_URL}
+      VALKEY_HOST=${VALKEY_HOST}
+      VALKEY_PORT=${VALKEY_PORT}
+      VALKEY_PASSWORD=${VALKEY_PASSWORD}
+      REDIS_HOST=redis://:${VALKEY_PASSWORD}@${VALKEY_HOST}:${VALKEY_PORT}/0
+
+
+      EOF
+    
+    - |
+      for network in backend-net notification-svc-net; do
+        if ! docker network ls | grep -q $network; then
+          docker network create -d overlay --attachable $network || true
+        fi
+      done
+    
+    - docker pull $CI_REGISTRY_IMAGE:$TAG
+    - |
+      docker stack deploy -c docker-compose.yml $STACK_NAME --with-registry-auth --prune
+      
+  after_script:
+    - rm -rf ~/.docker/*.pem
+
+
+Deploy:TWEZIMBE_C01:
+  <<: *Deploy_Swarm
+  environment:
+    name: "PROD/TWEZIMBE-NOTIFICATION-SVC"
+  variables:
+    DOCKER_HOST: $DOCKER_HOST_TWZ_C01
+    TLSCACERT: $DOCKER_CACERT_TWZ_C01
+    TLSCERT: $DOCKER_CERT_TWZ_C01
+    TLSKEY: $DOCKER_KEY_TWZ_C01
+    TZ: Africa/Kampala
+    STACK_NAME: notification-svc
+    EMAIL_SERVICE: smtp-relay.brevo.com
+    EMAIL_PASSWORD: Kzw14vkq2L3GATgc
+    EMAIL_USER: 61a276001@smtp-brevo.com
+    DATABASE_URL: postgresql://notification-svc_user:notification-svc_password@notification-svc-db-primary-1:5432/notification-svc_db?schema=public
+    VALKEY_PORT: 6379
+    NOTIFICATION_WORKER_SERVICE_URL: http://notification-svc-worker:4014
+    VALKEY_HOST: valkey
+    VALKEY_PASSWORD: notification_valkey_0195126e-832f-7505-b7e4-4b1ce6d4d8c4
+    VALKEY_DISABLE_COMMANDS: "FLUSHDB,FLUSHALL"
+    REDIS_HOST: redis://notification-svc-redis:6379
+    NATS_URL: nats://nats1:4222
+    JWT_SECRET_KEY: ac9b5dc991bc6b097ab66323f1670cbb2e15460d12d1434e2e1e5b945b94a685
+    OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4333/v1/traces
+    OTEL_EXPORTER_OTLP_HEADERS: "Authorization=Bearer $OTEL_EXPORTER_OTLP_HEADERS"
+    OTEL_SERVICE_NAME: notification-svc
+    OTEL_TRACES_SAMPLER: always_sample
+    OTEL_TRACES_SAMPLER_ARG: 1
+    OTEL_TRACES_SAMPLER_ARG_MAX: 1
+    OTEL_TRACES_SAMPLER_ARG_MIN: 1
+  when: manual
+  only:
+    - main
+
+Deploy:TWEZIMBE_C02:
+  <<: *Deploy_Swarm
+  environment:
+    name: "STAGING/TWEZIMBE-NOTIFICATION-SVC"
+  variables:
+    DOCKER_HOST: $DOCKER_HOST_TWZ_C02
+    TLSCACERT: $DOCKER_CACERT_TWZ_C02
+    TLSCERT: $DOCKER_CERT_TWZ_C02
+    TLSKEY: $DOCKER_KEY_TWZ_C02
+    TZ: Africa/Kampala
+    STACK_NAME: notification-svc
+    EMAIL_SERVICE: smtp-relay.brevo.com
+    EMAIL_PASSWORD: Kzw14vkq2L3GATgc
+    EMAIL_USER: 61a276001@smtp-brevo.com
+    DATABASE_URL: postgresql://notification-svc_user:notification-svc_password@notification-svc-db-primary-1:5432/notification-svc_db?schema=public
+    VALKEY_PORT: 6379
+    VALKEY_HOST: valkey
+    VALKEY_PASSWORD: notification_valkey_0195126e-832f-7505-b7e4-4b1ce6d4d8c4
+    VALKEY_DISABLE_COMMANDS: "FLUSHDB,FLUSHALL"
+    REDIS_HOST: redis://notification-svc-redis:6379
+    NATS_URL: nats://nats1:4222
+    JWT_SECRET_KEY: ac9b5dc991bc6b097ab66323f1670cbb2e15460d12d1434e2e1e5b945b94a685
+    OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4333/v1/traces
+    NOTIFICATION_WORKER_SERVICE_URL: http://notification-svc-worker:4014
+    OTEL_EXPORTER_OTLP_HEADERS: "Authorization=Bearer $OTEL_EXPORTER_OTLP_HEADERS"
+    OTEL_SERVICE_NAME: notification-svc
+    OTEL_TRACES_SAMPLER: always_sample
+    OTEL_TRACES_SAMPLER_ARG: 1
+    OTEL_TRACES_SAMPLER_ARG_MAX: 1
+    OTEL_TRACES_SAMPLER_ARG_MIN: 1
+  only:
+    - main
+    - staging
+
+Deploy:TWEZIMBE_C03:
+  <<: *Deploy_Swarm
+  environment:
+    name: "DEV/TWEZIMBE-NOTIFICATION-SVC"
+  variables:
+    DOCKER_HOST: $DOCKER_HOST_TWZ_C03
+    TLSCACERT: $DOCKER_CACERT_TWZ_C03
+    TLSCERT: $DOCKER_CERT_TWZ_C03
+    TLSKEY: $DOCKER_KEY_TWZ_C03
+    TZ: Africa/Kampala
+    STACK_NAME: notification-svc
+    EMAIL_SERVICE: smtp-relay.brevo.com
+    EMAIL_PASSWORD: Kzw14vkq2L3GATgc
+    EMAIL_USER: 61a276001@smtp-brevo.com
+    DATABASE_URL: postgresql://notification-svc_user:notification-svc_password@notification-svc-db-primary-1:5432/notification-svc_db?schema=public
+    VALKEY_PORT: 6379
+    VALKEY_HOST: valkey
+    VALKEY_PASSWORD: notification_valkey_0195126e-832f-7505-b7e4-4b1ce6d4d8c4
+    VALKEY_DISABLE_COMMANDS: "FLUSHDB,FLUSHALL"
+    REDIS_HOST: redis://notification-svc-redis:6379
+    NATS_URL: nats://nats1:4222
+    JWT_SECRET_KEY: ac9b5dc991bc6b097ab66323f1670cbb2e15460d12d1434e2e1e5b945b94a685
+    OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4333/v1/traces
+    NOTIFICATION_WORKER_SERVICE_URL: http://notification-svc-worker:4014
+    OTEL_EXPORTER_OTLP_HEADERS: "Authorization=Bearer $OTEL_EXPORTER_OTLP_HEADERS"
+    OTEL_SERVICE_NAME: notification-svc
+    OTEL_TRACES_SAMPLER: always_sample
+    OTEL_TRACES_SAMPLER_ARG: 1
+    OTEL_TRACES_SAMPLER_ARG_MAX: 1
+    OTEL_TRACES_SAMPLER_ARG_MIN: 1
+  only:
+    - dev
+  
