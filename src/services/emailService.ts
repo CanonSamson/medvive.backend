@@ -13,22 +13,29 @@ export const sendEmail = async (
     const htmlContent = parseTemplate(templateName, placeholders)
 
     // Create a transporter with improved timeout and debugging
-    const transporter = nodemailer.createTransport({
-      host: process.env.EMAIL_SERVICE, // SMTP server host
-      port: 587, // Port for SMTP (587 is common for TLS)
-      secure: false, // Use TLS (upgrade later with STARTTLS)
+    // const transporter = nodemailer.createTransport({
+    //   host: process.env.EMAIL_SERVICE, // SMTP server host
+    //   port: 587, // Port for SMTP (587 is common for TLS)
+    //   secure: false, // Use TLS (upgrade later with STARTTLS)
+    //   auth: {
+    //     user: process.env.EMAIL_USER, // SMTP username
+    //     pass: process.env.EMAIL_PASSWORD // SMTP password
+    //   },
+    //   connectionTimeout: 60000, // Increase connection timeout to 60 seconds
+    //   socketTimeout: 60000, // Increase socket timeout to 60 seconds
+    //   debug: true, // Enable debugging for detailed logs
+    //   logger: true // Log output to console
+    // })
+ const transporter = nodemailer.createTransport({
+      service: "gmail",
       auth: {
-        user: process.env.EMAIL_USER, // SMTP username
-        pass: process.env.EMAIL_PASSWORD // SMTP password
+        user: process.env.EMAIL,
+        pass: process.env.EMAIL_PASSWORD,
       },
-      connectionTimeout: 60000, // Increase connection timeout to 60 seconds
-      socketTimeout: 60000, // Increase socket timeout to 60 seconds
-      debug: true, // Enable debugging for detailed logs
-      logger: true // Log output to console
-    })
-
+    });
+    
     const mailOptions = {
-      from: `"Twezimbe" <webadmin@summitcl.com>`,
+      from: process.env.EMAIL,
       to,
       subject,
       html: htmlContent

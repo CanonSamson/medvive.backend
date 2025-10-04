@@ -8,6 +8,7 @@ import logger from './utils/logger.js'
 import { authEmailRoutes } from './routes/authEmailRoutes.js'
 import { kycEmailRoutes } from './routes/kycEmailRoutes.js'
 import initializeSocket from './socket/index.js'
+import { initializeFirebaseAdmin } from './utils/firebase/admin.js'
 
 // Configure logging
 const morganFormat = ':method :url :status :response-time ms'
@@ -74,6 +75,11 @@ const setupCleanupHandlers = () => {
 async function startServer () {
   try {
     dotenv.config()
+    
+    // Initialize Firebase Admin SDK
+    initializeFirebaseAdmin()
+    logger.info('Firebase Admin SDK initialized')
+    
     const app = express()
     const PORT = process.env.PORT || 4004
 
