@@ -9,6 +9,7 @@ import { authEmailRoutes } from './routes/authEmailRoutes.js'
 import { kycEmailRoutes } from './routes/kycEmailRoutes.js'
 import initializeSocket from './socket/index.js'
 import { initializeFirebaseAdmin } from './utils/firebase/admin.js'
+import { authRoutes } from './routes/authRoutes.js'
 
 // Configure logging
 const morganFormat = ':method :url :status :response-time ms'
@@ -75,11 +76,11 @@ const setupCleanupHandlers = () => {
 async function startServer () {
   try {
     dotenv.config()
-    
+
     // Initialize Firebase Admin SDK
     initializeFirebaseAdmin()
     logger.info('Firebase Admin SDK initialized')
-    
+
     const app = express()
     const PORT = process.env.PORT || 4004
 
@@ -97,12 +98,12 @@ async function startServer () {
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
       }
     })
-
     // Initialize socket handlers
-    const initializedIo = initializeSocket(io)
+    initializeSocket(io)
 
     // Setup routes
     app.use('/auth/email', authEmailRoutes)
+    app.use('/auth', authRoutes)
     app.use('/kyc/email', kycEmailRoutes)
 
     app.get('/health', healthCheck)

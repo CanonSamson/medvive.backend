@@ -1,5 +1,5 @@
 import { createLogger, format, transports } from "winston";
-const { combine, timestamp, json, colorize } = format;
+const { combine, timestamp, json } = format;
 
 // Custom format for console logging with colors
 const consoleLogFormat = format.combine(
