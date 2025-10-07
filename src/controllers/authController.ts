@@ -5,12 +5,17 @@ import { sendEmail } from '../services/emailService.js'
 import { getDBAdmin, createDBAdmin, updateDBAdmin } from '../utils/firebase/admin-database.js'
 import { generateOTP } from '../utils/generateOTP.js'
 import { PatientData, OTPData } from '../../custom-types.js'
+import logger from '../utils/logger.js'
 
 export const handleSendOTP = asyncWrapper(async (req: Request, res: Response) => {
+  const requestId = Math.random().toString(36).substring(7)
+  logger.info('handleSendOTP: Request initiated', { requestId, body: req.body })
+  
   try {
     const body = req.body
 
     // Validate input
+    logger.debug('handleSendOTP: Starting input validation', { requestId })
     const result = z
       .object({
         userId: z.string()
@@ -18,6 +23,11 @@ export const handleSendOTP = asyncWrapper(async (req: Request, res: Response) =>
       .safeParse(body)
 
     if (!result.success) {
+      logger.warn('handleSendOTP: Input validation failed', { 
+        requestId, 
+        errors: result.error.issues,
+        body 
+      })
       return res.status(400).json({
         error: 'Validation failed',
         details: result.error.issues,
@@ -26,10 +36,17 @@ export const handleSendOTP = asyncWrapper(async (req: Request, res: Response) =>
     }
 
     const { userId } = result.data
+    logger.info('handleSendOTP: Input validation successful', { requestId, userId })
 
+    logger.debug('handleSendOTP: Fetching patient record from database', { requestId, userId })
     const patientRecord = await getDBAdmin('patients', userId)
 
     if (!patientRecord?.data) {
+      logger.warn('handleSendOTP: Patient not found in database', { 
+        requestId, 
+        userId, 
+        patientRecord 
+      })
       return res.status(404).json({
         error: 'Patient not found',
         success: false,
@@ -40,10 +57,21 @@ export const handleSendOTP = asyncWrapper(async (req: Request, res: Response) =>
     const patientData = patientRecord.data as PatientData
     const email = patientData.email
     const fullName = patientData.fullName
+    logger.info('handleSendOTP: Patient record retrieved successfully', { 
+      requestId, 
+      userId, 
+      email: email.replace(/(.{2}).*(@.*)/, '$1***$2'), // Mask email for privacy
+      fullName 
+    })
 
     // Generate OTP
+    logger.debug('handleSendOTP: Generating OTP', { requestId })
     const otp = generateOTP()
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000) // 5 minutes from now
+    logger.info('handleSendOTP: OTP generated successfully', { 
+      requestId, 
+      expiresAt: expiresAt.toISOString() 
+    })
 
     // Store OTP in Firebase (using email as document ID for easy retrieval)
     const otpData: OTPData = {
@@ -55,14 +83,24 @@ export const handleSendOTP = asyncWrapper(async (req: Request, res: Response) =>
       createdAt: new Date().toISOString()
     }
 
+    const emailKey = email.replace(/[.#$\[\]]/g, '_')
+    logger.debug('handleSendOTP: Storing OTP in database', { requestId, emailKey })
+
     // Create or update OTP record using Admin SDK
     await createDBAdmin(
       'email-verification-otps',
-      email.replace(/[.#$\[\]]/g, '_'),
+      emailKey,
       otpData
     )
+    logger.info('handleSendOTP: OTP stored in database successfully', { requestId, emailKey })
 
     // Send OTP email
+    logger.debug('handleSendOTP: Sending OTP email', { 
+      requestId, 
+      email: email.replace(/(.{2}).*(@.*)/, '$1***$2'),
+      template: 'otp-verification'
+    })
+    
     try {
       await sendEmail(
         email,
@@ -75,20 +113,34 @@ export const handleSendOTP = asyncWrapper(async (req: Request, res: Response) =>
         }
       )
 
+      logger.info('handleSendOTP: OTP email sent successfully', { 
+        requestId, 
+        email: email.replace(/(.{2}).*(@.*)/, '$1***$2'),
+        expiresAt: expiresAt.toISOString()
+      })
+
       return res.status(201).json({
         message: 'OTP sent successfully',
         success: true,
         expiresAt: expiresAt.toISOString()
       })
     } catch (emailError) {
-      console.error('Email sending failed:', emailError)
+      logger.error('handleSendOTP: Email sending failed', { 
+        requestId, 
+        error: emailError,
+        email: email.replace(/(.{2}).*(@.*)/, '$1***$2')
+      })
       return res.status(500).json({
         error: 'Failed to send OTP email',
         success: false
       })
     }
   } catch (error) {
-    console.error('Server error:', error)
+    logger.error('handleSendOTP: Server error occurred', { 
+      requestId, 
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined
+    })
     return res.status(500).json({
       error: 'Internal server error',
       success: false
@@ -97,10 +149,14 @@ export const handleSendOTP = asyncWrapper(async (req: Request, res: Response) =>
 })
 
 export const handleVerifyOTP = asyncWrapper(async (req: Request, res: Response) => {
+  const requestId = Math.random().toString(36).substring(7)
+  logger.info('handleVerifyOTP: Request initiated', { requestId, body: req.body })
+  
   try {
     const body = req.body
 
     // Validate input
+    logger.debug('handleVerifyOTP: Starting input validation', { requestId })
     const result = z
       .object({
         otp: z.string().length(5, 'OTP must be 5 digits'),
@@ -109,6 +165,11 @@ export const handleVerifyOTP = asyncWrapper(async (req: Request, res: Response) 
       .safeParse(body)
 
     if (!result.success) {
+      logger.warn('handleVerifyOTP: Input validation failed', { 
+        requestId, 
+        errors: result.error.issues,
+        body 
+      })
       return res.status(400).json({
         error: 'Validation failed',
         details: result.error.issues,
@@ -117,10 +178,17 @@ export const handleVerifyOTP = asyncWrapper(async (req: Request, res: Response) 
     }
 
     const { otp, userId } = result.data
+    logger.info('handleVerifyOTP: Input validation successful', { requestId, userId })
 
+    logger.debug('handleVerifyOTP: Fetching patient record from database', { requestId, userId })
     const patientRecord = await getDBAdmin('patients', userId)
 
     if (!patientRecord?.data) {
+      logger.warn('handleVerifyOTP: Patient not found in database', { 
+        requestId, 
+        userId, 
+        patientRecord 
+      })
       return res.status(404).json({
         error: 'Patient not found',
         success: false,
@@ -131,11 +199,23 @@ export const handleVerifyOTP = asyncWrapper(async (req: Request, res: Response) 
     const patientData = patientRecord.data as PatientData
     const email = patientData.email
     const emailKey = email.replace(/[.#$\[\]]/g, '_')
+    logger.info('handleVerifyOTP: Patient record retrieved successfully', { 
+      requestId, 
+      userId, 
+      email: email.replace(/(.{2}).*(@.*)/, '$1***$2'),
+      emailKey 
+    })
 
     // Get OTP record from Firebase using Admin SDK
+    logger.debug('handleVerifyOTP: Fetching OTP record from database', { requestId, emailKey })
     const otpRecord = await getDBAdmin('email-verification-otps', emailKey)
 
     if (!otpRecord.success || !otpRecord.data) {
+      logger.warn('handleVerifyOTP: OTP record not found or expired', { 
+        requestId, 
+        emailKey, 
+        otpRecord 
+      })
       return res.status(404).json({
         error: 'OTP not found or expired',
         success: false
@@ -143,9 +223,17 @@ export const handleVerifyOTP = asyncWrapper(async (req: Request, res: Response) 
     }
 
     const otpData = otpRecord.data as OTPData
+    logger.info('handleVerifyOTP: OTP record retrieved successfully', { 
+      requestId, 
+      emailKey,
+      attempts: otpData.attempts,
+      verified: otpData.verified,
+      expiresAt: otpData.expiresAt
+    })
 
     // Check if OTP is already verified
     if (otpData.verified) {
+      logger.warn('handleVerifyOTP: OTP already used', { requestId, emailKey })
       return res.status(400).json({
         error: 'OTP already used',
         success: false
@@ -156,6 +244,12 @@ export const handleVerifyOTP = asyncWrapper(async (req: Request, res: Response) 
     const now = new Date()
     const expiresAt = new Date(otpData.expiresAt)
     if (now > expiresAt) {
+      logger.warn('handleVerifyOTP: OTP has expired', { 
+        requestId, 
+        emailKey, 
+        now: now.toISOString(), 
+        expiresAt: expiresAt.toISOString() 
+      })
       return res.status(400).json({
         error: 'OTP has expired',
         success: false
@@ -164,6 +258,11 @@ export const handleVerifyOTP = asyncWrapper(async (req: Request, res: Response) 
 
     // Check attempt limit
     if (otpData.attempts >= 3) {
+      logger.warn('handleVerifyOTP: Maximum verification attempts exceeded', { 
+        requestId, 
+        emailKey, 
+        attempts: otpData.attempts 
+      })
       return res.status(429).json({
         error: 'Maximum verification attempts exceeded',
         success: false
@@ -171,10 +270,23 @@ export const handleVerifyOTP = asyncWrapper(async (req: Request, res: Response) 
     }
 
     // Verify OTP
+    logger.debug('handleVerifyOTP: Verifying OTP', { requestId, emailKey })
     if (otpData.otp !== otp) {
+      logger.warn('handleVerifyOTP: Invalid OTP provided', { 
+        requestId, 
+        emailKey, 
+        attempts: otpData.attempts + 1,
+        attemptsLeft: 2 - otpData.attempts
+      })
+      
       // Increment attempts
       await updateDBAdmin('email-verification-otps', emailKey, {
         attempts: otpData.attempts + 1
+      })
+      logger.info('handleVerifyOTP: OTP attempts incremented', { 
+        requestId, 
+        emailKey, 
+        newAttempts: otpData.attempts + 1 
       })
 
       return res.status(400).json({
@@ -184,7 +296,10 @@ export const handleVerifyOTP = asyncWrapper(async (req: Request, res: Response) 
       })
     }
 
+    logger.info('handleVerifyOTP: OTP verification successful', { requestId, emailKey })
+
     // OTP is valid - mark as verified
+    logger.debug('handleVerifyOTP: Updating verification status in database', { requestId, emailKey, userId })
     await Promise.all([
       updateDBAdmin('email-verification-otps', emailKey, {
         verified: true,
@@ -195,13 +310,24 @@ export const handleVerifyOTP = asyncWrapper(async (req: Request, res: Response) 
         emailVerifiedAt: new Date().toISOString()
       })
     ])
+    
+    logger.info('handleVerifyOTP: Email verification completed successfully', { 
+      requestId, 
+      emailKey, 
+      userId,
+      verifiedAt: new Date().toISOString()
+    })
 
     return res.status(200).json({
       message: 'Email verified successfully',
       success: true
     })
   } catch (error) {
-    console.error('Server error:', error)
+    logger.error('handleVerifyOTP: Server error occurred', { 
+      requestId, 
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined
+    })
     return res.status(500).json({
       error: 'Internal server error',
       success: false

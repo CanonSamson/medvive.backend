@@ -7,6 +7,7 @@ import { Server } from 'socket.io'
 import logger from './utils/logger.js'
 import { authEmailRoutes } from './routes/authEmailRoutes.js'
 import { kycEmailRoutes } from './routes/kycEmailRoutes.js'
+import { alatPayRoutes } from './routes/alatPayRoutes.js'
 import initializeSocket from './socket/index.js'
 import { initializeFirebaseAdmin } from './utils/firebase/admin.js'
 import { authRoutes } from './routes/authRoutes.js'
@@ -82,7 +83,7 @@ async function startServer () {
     logger.info('Firebase Admin SDK initialized')
 
     const app = express()
-    const PORT = process.env.PORT || 4004
+    const PORT = process.env.PORT 
 
     // Apply middleware
     app.use(loggingMiddleware)
@@ -102,9 +103,10 @@ async function startServer () {
     initializeSocket(io)
 
     // Setup routes
-    app.use('/auth/email', authEmailRoutes)
-    app.use('/auth', authRoutes)
-    app.use('/kyc/email', kycEmailRoutes)
+    app.use('/v1/api/auth/email', authEmailRoutes)
+    app.use('/v1/api/auth', authRoutes)
+    app.use('/v1/api/kyc/email', kycEmailRoutes)
+    app.use('/v1/api/payments/alatpay', alatPayRoutes)
 
     app.get('/health', healthCheck)
     app.get('/', (_req, res) => {
