@@ -14,7 +14,7 @@ export interface VirtualAccountRequestBody {
     phone: string
     firstName: string
     lastName: string
-    metadata?: { [key: string]: string }
+    metadata?: { [key: string]: any }
   }
 }
 

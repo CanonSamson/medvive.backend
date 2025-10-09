@@ -1,28 +1,71 @@
 // custom-types.d.ts
-import { Request } from "express";
+import { Request } from 'express'
 
-declare module "express-serve-static-core" {
+declare module 'express-serve-static-core' {
   interface Request {
-    id?: string;
-    roles?: string[];
-    channelRoles?: string[];
+    id?: string
+    roles?: string[]
+    channelRoles?: string[]
   }
 }
 
 // Type definitions for OTP and Patient data
 export interface PatientData {
-  email: string;
-  fullName: string;
-  emailVerification?: boolean;
-  emailVerifiedAt?: string;
+   uid: string
+  fullName: string
+  preferredName: string
+  email: string
+  profileImage: string | null
+  emailVerification: boolean
+  emailVerifiedAt: string
+  phoneNumber: string
+  dateofbirth: string
+  gender: string
+  height: number
+  heightUnit: string
+  weight: number
+  weightUnit: string
+  verifyLater: boolean
+  updateProfileLater: boolean
+  occupation?: string
+  mobilenumber?: string
+  ethnicity?:string,
+  houseAddress?:string,
+  maritalStatus?:string,
+  religion?:string
+}
+
+export interface DoctorData {
+  uid: string
+  userId: string
+  fullName: string
+  email: string
+  endbooking: number
+  ethnicity: string
+  experience: string
+  gender: string
+  graduation: string
+  houseAddress: string
+  language: string
+  location: string
+  maritalStatus: string
+  medviveEmail: string
+  profileImage: string | null
+  specialty?: string
+  dateofbirth?: string | null
+  yearOfExperience: string | null
+  phoneNumber?: string | null
+  availableSlots?: AvailabilityData | null
+  consultationFee?: number | null
+  sessionDuration?: string | null
 }
 
 export interface OTPData {
-  otp: string;
-  email: string;
-  expiresAt: string;
-  attempts: number;
-  verified: boolean;
-  createdAt: string;
-  verifiedAt?: string;
+  otp: string
+  email: string
+  expiresAt: string
+  attempts: number
+  verified: boolean
+  createdAt: string
+  verifiedAt?: string
 }

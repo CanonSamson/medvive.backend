@@ -11,6 +11,7 @@ import { alatPayRoutes } from './routes/alatPayRoutes.js'
 import initializeSocket from './socket/index.js'
 import { initializeFirebaseAdmin } from './utils/firebase/admin.js'
 import { authRoutes } from './routes/authRoutes.js'
+import { consultationRoutes } from './routes/consultationRoutes.js'
 
 // Configure logging
 const morganFormat = ':method :url :status :response-time ms'
@@ -33,7 +34,7 @@ const configureCors = () => {
   return cors({
     origin: '*',
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    allowedHeaders: ['*']
   })
 }
 
@@ -107,6 +108,8 @@ async function startServer () {
     app.use('/v1/api/auth', authRoutes)
     app.use('/v1/api/kyc/email', kycEmailRoutes)
     app.use('/v1/api/payments/alatpay', alatPayRoutes)
+    app.use('/v1/api/consultation', consultationRoutes)
+
 
     app.get('/health', healthCheck)
     app.get('/', (_req, res) => {

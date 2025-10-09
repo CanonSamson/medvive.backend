@@ -6,11 +6,36 @@ import { VirtualAccountRequestBody } from '../controllers/alatPayController.js'
 interface VirtualAccountResponse {
   success: boolean
   data?: {
-    virtualAccountNumber: string
-    bankName: string
-    accountName: string
-    expiryTime: string
-    reference: string
+    id: string
+    merchantId: string
+    virtualBankCode: string
+    virtualBankAccountNumber: string
+    businessBankAccountNumber: string | null
+    businessBankCode: string
+    transactionId: string
+    status: string
+    expiredAt: string
+    settlementType: string | null
+    createdAt: string
+    businessId: string
+    amount: number
+    currency: string
+    orderId: string
+    description: string
+    subBusinessCode: string | null
+    customer: {
+      email: string
+      phone: string
+      firstName: string
+      lastName: string
+      metadata: string
+    }
+    // Legacy fields for backward compatibility
+    virtualAccountNumber?: string
+    bankName?: string
+    accountName?: string
+    expiryTime?: string
+    reference?: string
   }
   message?: string
   error?: string
@@ -19,16 +44,89 @@ interface VirtualAccountResponse {
 interface TransactionStatusResponse {
   success: boolean
   data?: {
+    amount: number
+    orderId: string
+    description: string
+    paymentMethodId: number
+    sessionId: string
+    isAmountDiscrepant: boolean
+    amountSent: number
+    nipTransaction: {
+      id: string
+      requestdate: string | null
+      nibssresponse: string | null
+      sendstatus: string | null
+      sendresponse: string | null
+      transactionId: string
+      transactionStatus: string
+      log: string
+      createdAt: string
+      isCallbackValidated: boolean
+      originatoraccountnumber: string
+      originatorname: string
+      bankname: string | null
+      bankcode: string
+      amount: number
+      narration: string | null
+      craccountname: string | null
+      craccount: string
+      paymentreference: string | null
+      sessionid: string
+    }
+    virtualAccount: {
+      id: string
+      merchantId: string
+      virtualBankCode: string
+      virtualBankAccountNumber: string
+      businessBankAccountNumber: string | null
+      businessBankCode: string
+      transactionId: string
+      status: string
+      expiredAt: string
+      settlementType: string | null
+      createdAt: string
+      businessId: string
+      amount: number
+      currency: string
+      orderId: string
+      description: string
+      subBusinessCode: string | null
+      customer: any | null
+    }
+    customer: {
+      id: string
+      transactionId: string
+      createdAt: string
+      email: string
+      phone: string
+      firstName: string
+      lastName: string
+      metadata: string
+    }
+    subBusinessCode: string | null
+    isCallbackValidated: boolean
     id: string
     merchantId: string
     businessId: string
-    channel: string
-    callbackUrl: string
+    channel: string | null
+    callbackUrl: string | null
+    feeAmount: number
+    businessName: string
+    currency: string
     status: string
-    message: string
+    statusReason: string | null
+    settlementType: string | null
+    createdAt: string
+    updatedAt: string
+    ngnVirtualBankAccountNumber: string | null
+    ngnVirtualBankCode: string | null
+    usdVirtualAccountNumber: string | null
+    usdVirtualBankCode: string | null
   }
   message?: string
   error?: string
+  requestId?: string
+  timestamp?: string
 }
 
 export class AlatPayService {
