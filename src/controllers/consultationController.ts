@@ -131,11 +131,13 @@ export const initializeConsultation = asyncWrapper(async (req, res) => {
   }
   const orderId = uuidv4()
 
+  const callbackUrl   = `${process.env.BASE_URL}/v1/api/consultation/call-back?consultationId=${consultationId}`
   const requestData = {
     amount: Number(consultationFee.total),
     currency: 'NGN',
     orderId,
     description: `${fullName} Consultation Payment  with Dr. ${doctorData.fullName}`,
+    callbackUrl,
     customer: {
       email,
       firstName,
@@ -174,7 +176,7 @@ export const initializeConsultation = asyncWrapper(async (req, res) => {
     // Save transaction to Firebase
     await createDBAdmin(
       'consultation-transactions',
-      result?.data?.transactionId as string,
+      transactionData?.transactionId as string,
       transactionData
     )
     logger.info('Transaction record created in Firebase', {
@@ -420,12 +422,15 @@ export const checkConsultationPaymentStatus = asyncWrapper(async (req, res) => {
       })
 
       // if (result.error?.includes("We're confirming your transaction...Kindly reach out to your merchant if this process exceeds 30 minutes.")) {
-        return res.status(400).json({
-          success: false,
-          message: "Your transaction is being processed. If payment was completed, please wait a few minutes and check again. If no payment was made, please complete your payment to proceed.",
-          requestId,
-          timestamp: new Date().toISOString()
-        })
+      return res.status(400).json({
+        success: false,
+        message:
+          'Your transaction is being processed. If payment was completed, please wait a few minutes and check again. If no payment was made, please complete your payment to proceed.',
+             error:
+          'Your transaction is being processed. If payment was completed, please wait a few minutes and check again. If no payment was made, please complete your payment to proceed.',
+        requestId,
+        timestamp: new Date().toISOString()
+      })
       // }
       // return res.status(400).json({
       //   success: false,
@@ -474,6 +479,50 @@ export const checkConsultationPaymentStatus = asyncWrapper(async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Internal server error during transaction status confirmation',
+      requestId,
+      timestamp: new Date().toISOString()
+    })
+  }
+})
+
+
+
+
+
+export const consultationPaymentCallback = asyncWrapper(async (req, res) => {
+  const requestId = req.headers['x-request-id'] || 'unknown'
+  
+  logger.info('Consultation payment callback received', {
+    requestId,
+    body: req.body,
+    headers: req.headers,
+    timestamp: new Date().toISOString()
+  })
+
+  try {
+    logger.info('Processing consultation payment callback', {
+      requestId,
+      timestamp: new Date().toISOString()
+    })
+
+    // TODO: Implement callback processing logic
+
+    logger.info('Consultation payment callback processed successfully', {
+      requestId,
+      timestamp: new Date().toISOString()
+    })
+
+  } catch (error: any) {
+    logger.error('Error processing consultation payment callback', {
+      requestId,
+      error: error.message || error,
+      stack: error.stack,
+      timestamp: new Date().toISOString()
+    })
+
+    return res.status(500).json({
+      success: false,
+      error: 'Internal server error processing payment callback',
       requestId,
       timestamp: new Date().toISOString()
     })

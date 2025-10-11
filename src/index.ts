@@ -110,7 +110,6 @@ async function startServer () {
     app.use('/v1/api/payments/alatpay', alatPayRoutes)
     app.use('/v1/api/consultation', consultationRoutes)
 
-
     app.get('/health', healthCheck)
     app.get('/', (_req, res) => {
       res.json({ message: 'Notification Service is running!' })

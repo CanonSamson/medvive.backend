@@ -31,3 +31,5 @@ router.get('/status', getServiceStatus)
 router.get('/health', healthCheck)
 
 export const alatPayRoutes = router
+
+

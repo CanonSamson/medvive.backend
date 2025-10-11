@@ -4,6 +4,7 @@ import {
   updateDBAdmin,
   getDBAdmin
 } from '../utils/firebase/admin-database.js'
+import logger from '../utils/logger.js'
 
 export class ConsultationService {
   private patientId: string
@@ -38,26 +39,54 @@ export class ConsultationService {
   }) {
     const timestamp = new Date().toISOString()
 
-    await createDBAdmin('consultations', consultationId, {
-      date: date.toString(),
-      time: time,
-      consultatedAt: timestamp,
-      patientId: this.patientId,
-      doctorId: this.doctorId,
-      active: true,
-      consultationId: consultationId,
-      status: 'PENDING',
-      symptomsDetails: patientSymptoms || {},
-      seen: { [this.doctorId]: false, [this.patientId]: false }
-    })
-
-    return {
+    logger.info('Starting new consultation booking', {
       consultationId,
       patientId: this.patientId,
       doctorId: this.doctorId,
       date,
       time,
-      status: 'PENDING'
+      hasSymptoms: !!patientSymptoms,
+      timestamp
+    })
+
+    try {
+      await createDBAdmin('consultations', consultationId, {
+        date: date.toString(),
+        time: time,
+        consultatedAt: timestamp,
+        patientId: this.patientId,
+        doctorId: this.doctorId,
+        active: true,
+        consultationId: consultationId,
+        status: 'PENDING',
+        symptomsDetails: patientSymptoms || {},
+        seen: { [this.doctorId]: false, [this.patientId]: false }
+      })
+
+      logger.info('Consultation booking created successfully', {
+        consultationId,
+        patientId: this.patientId,
+        doctorId: this.doctorId,
+        status: 'PENDING'
+      })
+
+      return {
+        consultationId,
+        patientId: this.patientId,
+        doctorId: this.doctorId,
+        date,
+        time,
+        status: 'PENDING'
+      }
+    } catch (error) {
+      logger.error('Failed to create consultation booking', {
+        consultationId,
+        patientId: this.patientId,
+        doctorId: this.doctorId,
+        error: error instanceof Error ? error.message : error,
+        timestamp
+      })
+      throw error
     }
   }
 
