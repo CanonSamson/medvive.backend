@@ -10,6 +10,7 @@ import {
 } from '../utils/firebase/admin-database.js'
 import { getAdminFirestore } from '../utils/firebase/admin.js'
 import logger from '../utils/logger.js'
+import { sendEmail } from '../services/emailService.js'
 import { v4 as uuidv4 } from 'uuid'
 
 export const initializeConsultation = asyncWrapper(async (req, res) => {
@@ -131,7 +132,7 @@ export const initializeConsultation = asyncWrapper(async (req, res) => {
   }
   const orderId = uuidv4()
 
-  const callbackUrl   = `${process.env.BASE_URL}/v1/api/consultation/call-back?consultationId=${consultationId}`
+  const callbackUrl = `${process.env.BASE_URL}/v1/api/consultation/call-back?consultationId=${consultationId}`
   const requestData = {
     amount: Number(consultationFee.total),
     currency: 'NGN',
@@ -198,6 +199,36 @@ export const initializeConsultation = asyncWrapper(async (req, res) => {
       orderId: requestData.orderId,
       virtualAccountNumber: result.data?.virtualAccountNumber
     })
+
+    // Send patient email: consultation initialized and payment pending
+    try {
+      await sendEmail(
+        email,
+        `Consultation initiated with Dr. ${doctorData.fullName}`,
+        'default',
+        {
+          title: 'Consultation Initialized',
+          text: `Hi ${firstName || 'Patient'}, your consultation with Dr. ${
+            doctorData.fullName
+          } has been initiated for ${date} at ${time}. Payment amount: ₦${Number(
+            consultationFee.total
+          )}. Virtual account: ${
+            result?.data?.virtualBankAccountNumber || 'provided'
+          }. Bank code: ${
+            result?.data?.virtualBankCode || 'N/A'
+          }. Transaction ID: ${result?.data?.transactionId || orderId}.`
+        }
+      )
+      logger.info('Initialization email sent to patient', {
+        patientId,
+        email: email.replace(/(.{2}).*(@.*)/, '$1***$2')
+      })
+    } catch (emailError) {
+      logger.error('Failed to send initialization email to patient', {
+        patientId,
+        error: emailError
+      })
+    }
 
     return res.status(200).json({
       success: true,
@@ -369,7 +400,7 @@ export const checkConsultationPaymentStatus = asyncWrapper(async (req, res) => {
         timestamp: new Date().toISOString()
       })
 
-      return res.status(200).json({
+      res.status(200).json({
         success: true,
         message: 'Transaction status retrieved successfully',
         data: {
@@ -383,6 +414,99 @@ export const checkConsultationPaymentStatus = asyncWrapper(async (req, res) => {
         requestId,
         timestamp: new Date().toISOString()
       })
+      // Send success email notifications using default template
+      try {
+        const statusUpper = (updateData.status || '').toUpperCase()
+        const isPaid = ['COMPLETED', 'SUCCESSFUL', 'SUCCESS', 'PAID'].includes(
+          statusUpper
+        )
+
+        if (isPaid) {
+          const doctorRecord = await getDBAdmin(
+            'doctors',
+            transactionData.doctorId
+          )
+          const patientRecord = await getDBAdmin(
+            'patients',
+            transactionData.patientId
+          )
+
+          const doctorInfo = doctorRecord?.data as DoctorData
+          const patientInfo = patientRecord?.data as PatientData
+          const doctorEmail =
+            doctorInfo?.email || doctorInfo?.medviveEmail || ''
+          const patientEmail = patientInfo?.email || ''
+
+          // Notify doctor of a paid consultation
+          if (doctorEmail) {
+            await sendEmail(
+              doctorEmail,
+              `New paid consultation with ${
+                patientInfo?.fullName || 'patient'
+              }`,
+              'default',
+              {
+                title: 'New Consultation Booked',
+                text: `A paid consultation with ${
+                  patientInfo?.fullName || 'a patient'
+                } is scheduled for ${
+                  transactionData.consultationDetails?.date
+                } at ${
+                  transactionData.consultationDetails?.time
+                }. Consultation ID: ${transactionData.consultationId}.`
+              }
+            )
+            logger.info('Doctor success email sent', {
+              requestId,
+              doctorId: transactionData.doctorId,
+              email: doctorEmail.replace(/(.{2}).*(@.*)/, '$1***$2')
+            })
+          } else {
+            logger.warn('Doctor email not available for notification', {
+              requestId,
+              doctorId: transactionData.doctorId
+            })
+          }
+
+          // Confirm to patient that payment is received and consultation is confirmed
+          if (patientEmail) {
+            await sendEmail(
+              patientEmail,
+              `Payment received - consultation confirmed with Dr. ${
+                doctorInfo?.fullName || 'your doctor'
+              }`,
+              'default',
+              {
+                title: 'Consultation Confirmed',
+                text: `Hi ${
+                  patientInfo?.fullName?.split(' ')[0] || 'there'
+                }, your payment has been received. Your consultation with Dr. ${
+                  doctorInfo?.fullName || ''
+                } is confirmed for ${
+                  transactionData.consultationDetails?.date
+                } at ${
+                  transactionData.consultationDetails?.time
+                }. Consultation ID: ${transactionData.consultationId}.`
+              }
+            )
+            logger.info('Patient success email sent', {
+              requestId,
+              patientId: transactionData.patientId,
+              email: patientEmail.replace(/(.{2}).*(@.*)/, '$1***$2')
+            })
+          } else {
+            logger.warn('Patient email not available for notification', {
+              requestId,
+              patientId: transactionData.patientId
+            })
+          }
+        }
+      } catch (emailError) {
+        logger.error('Failed to send success emails', {
+          requestId,
+          error: emailError
+        })
+      }
     } else {
       // Update Firebase with failed status check
       const updateData = {
@@ -426,7 +550,7 @@ export const checkConsultationPaymentStatus = asyncWrapper(async (req, res) => {
         success: false,
         message:
           'Your transaction is being processed. If payment was completed, please wait a few minutes and check again. If no payment was made, please complete your payment to proceed.',
-             error:
+        error:
           'Your transaction is being processed. If payment was completed, please wait a few minutes and check again. If no payment was made, please complete your payment to proceed.',
         requestId,
         timestamp: new Date().toISOString()
@@ -485,13 +609,9 @@ export const checkConsultationPaymentStatus = asyncWrapper(async (req, res) => {
   }
 })
 
-
-
-
-
 export const consultationPaymentCallback = asyncWrapper(async (req, res) => {
   const requestId = req.headers['x-request-id'] || 'unknown'
-  
+
   logger.info('Consultation payment callback received', {
     requestId,
     body: req.body,
@@ -511,7 +631,6 @@ export const consultationPaymentCallback = asyncWrapper(async (req, res) => {
       requestId,
       timestamp: new Date().toISOString()
     })
-
   } catch (error: any) {
     logger.error('Error processing consultation payment callback', {
       requestId,
