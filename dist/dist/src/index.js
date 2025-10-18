@@ -11,8 +11,6 @@ import { alatPayRoutes } from './routes/alatPayRoutes.js';
 import initializeSocket from './socket/index.js';
 import { initializeFirebaseAdmin } from './utils/firebase/admin.js';
 import { authRoutes } from './routes/authRoutes.js';
-import { consultationRoutes } from './routes/consultationRoutes.js';
-import { discordClient } from '../discord/index.js';
 // Configure logging
 const morganFormat = ':method :url :status :response-time ms';
 const loggingMiddleware = morgan(morganFormat, {
@@ -33,7 +31,7 @@ const configureCors = () => {
     return cors({
         origin: '*',
         methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-        allowedHeaders: ['*']
+        allowedHeaders: ['Content-Type', 'Authorization']
     });
 };
 // Error handling middleware
@@ -68,7 +66,6 @@ const setupCleanupHandlers = () => {
 async function startServer() {
     try {
         dotenv.config();
-        discordClient.login(process.env.DISTOKEN);
         // Initialize Firebase Admin SDK
         initializeFirebaseAdmin();
         logger.info('Firebase Admin SDK initialized');
@@ -94,7 +91,6 @@ async function startServer() {
         app.use('/v1/api/auth', authRoutes);
         app.use('/v1/api/kyc/email', kycEmailRoutes);
         app.use('/v1/api/payments/alatpay', alatPayRoutes);
-        app.use('/v1/api/consultation', consultationRoutes);
         app.get('/health', healthCheck);
         app.get('/', (_req, res) => {
             res.json({ message: 'Notification Service is running!' });
@@ -114,4 +110,5 @@ async function startServer() {
     }
 }
 startServer();
+//# sourceMappingURL=index.js.map
 //# sourceMappingURL=index.js.map

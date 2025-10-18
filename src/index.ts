@@ -12,6 +12,7 @@ import initializeSocket from './socket/index.js'
 import { initializeFirebaseAdmin } from './utils/firebase/admin.js'
 import { authRoutes } from './routes/authRoutes.js'
 import { consultationRoutes } from './routes/consultationRoutes.js'
+import { discordClient } from '../discord/index.js'
 
 // Configure logging
 const morganFormat = ':method :url :status :response-time ms'
@@ -79,12 +80,13 @@ async function startServer () {
   try {
     dotenv.config()
 
+    discordClient.login(process.env.DISTOKEN)
     // Initialize Firebase Admin SDK
     initializeFirebaseAdmin()
     logger.info('Firebase Admin SDK initialized')
 
     const app = express()
-    const PORT = process.env.PORT 
+    const PORT = process.env.PORT
 
     // Apply middleware
     app.use(loggingMiddleware)

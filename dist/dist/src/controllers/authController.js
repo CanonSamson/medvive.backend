@@ -1,15 +1,12 @@
 import { z } from 'zod';
 import asyncWrapper from '../middlewares/asyncWrapper.js';
 import { sendEmail } from '../services/emailService.js';
-import { getDBAdmin, createDBAdmin, updateDBAdmin, deleteDBAdmin } from '../utils/firebase/admin-database.js';
+import { getDBAdmin, createDBAdmin, updateDBAdmin } from '../utils/firebase/admin-database.js';
 import { generateOTP } from '../utils/generateOTP.js';
 import logger from '../utils/logger.js';
 export const handleSendOTP = asyncWrapper(async (req, res) => {
     const requestId = Math.random().toString(36).substring(7);
-    logger.info('handleSendOTP: Request initiated', {
-        requestId,
-        body: req.body
-    });
+    logger.info('handleSendOTP: Request initiated', { requestId, body: req.body });
     try {
         const body = req.body;
         // Validate input
@@ -32,14 +29,8 @@ export const handleSendOTP = asyncWrapper(async (req, res) => {
             });
         }
         const { userId } = result.data;
-        logger.info('handleSendOTP: Input validation successful', {
-            requestId,
-            userId
-        });
-        logger.debug('handleSendOTP: Fetching patient record from database', {
-            requestId,
-            userId
-        });
+        logger.info('handleSendOTP: Input validation successful', { requestId, userId });
+        logger.debug('handleSendOTP: Fetching patient record from database', { requestId, userId });
         const patientRecord = await getDBAdmin('patients', userId);
         if (!patientRecord?.data) {
             logger.warn('handleSendOTP: Patient not found in database', {
@@ -80,16 +71,10 @@ export const handleSendOTP = asyncWrapper(async (req, res) => {
             createdAt: new Date().toISOString()
         };
         const emailKey = email.replace(/[.#$\[\]]/g, '_');
-        logger.debug('handleSendOTP: Storing OTP in database', {
-            requestId,
-            emailKey
-        });
+        logger.debug('handleSendOTP: Storing OTP in database', { requestId, emailKey });
         // Create or update OTP record using Admin SDK
         await createDBAdmin('email-verification-otps', emailKey, otpData);
-        logger.info('handleSendOTP: OTP stored in database successfully', {
-            requestId,
-            emailKey
-        });
+        logger.info('handleSendOTP: OTP stored in database successfully', { requestId, emailKey });
         // Send OTP email
         logger.debug('handleSendOTP: Sending OTP email', {
             requestId,
@@ -139,10 +124,7 @@ export const handleSendOTP = asyncWrapper(async (req, res) => {
 });
 export const handleVerifyOTP = asyncWrapper(async (req, res) => {
     const requestId = Math.random().toString(36).substring(7);
-    logger.info('handleVerifyOTP: Request initiated', {
-        requestId,
-        body: req.body
-    });
+    logger.info('handleVerifyOTP: Request initiated', { requestId, body: req.body });
     try {
         const body = req.body;
         // Validate input
@@ -166,14 +148,8 @@ export const handleVerifyOTP = asyncWrapper(async (req, res) => {
             });
         }
         const { otp, userId } = result.data;
-        logger.info('handleVerifyOTP: Input validation successful', {
-            requestId,
-            userId
-        });
-        logger.debug('handleVerifyOTP: Fetching patient record from database', {
-            requestId,
-            userId
-        });
+        logger.info('handleVerifyOTP: Input validation successful', { requestId, userId });
+        logger.debug('handleVerifyOTP: Fetching patient record from database', { requestId, userId });
         const patientRecord = await getDBAdmin('patients', userId);
         if (!patientRecord?.data) {
             logger.warn('handleVerifyOTP: Patient not found in database', {
@@ -194,14 +170,10 @@ export const handleVerifyOTP = asyncWrapper(async (req, res) => {
             requestId,
             userId,
             email: email.replace(/(.{2}).*(@.*)/, '$1***$2'),
-            fullEmail: email,
             emailKey
         });
         // Get OTP record from Firebase using Admin SDK
-        logger.debug('handleVerifyOTP: Fetching OTP record from database', {
-            requestId,
-            emailKey
-        });
+        logger.debug('handleVerifyOTP: Fetching OTP record from database', { requestId, emailKey });
         const otpRecord = await getDBAdmin('email-verification-otps', emailKey);
         if (!otpRecord.success || !otpRecord.data) {
             logger.warn('handleVerifyOTP: OTP record not found or expired', {
@@ -209,20 +181,6 @@ export const handleVerifyOTP = asyncWrapper(async (req, res) => {
                 emailKey,
                 otpRecord
             });
-            try {
-                await deleteDBAdmin('email-verification-otps', emailKey);
-                logger.info('handleVerifyOTP: Deleted stale/missing OTP record', {
-                    requestId,
-                    emailKey
-                });
-            }
-            catch (deleteError) {
-                logger.error('handleVerifyOTP: Failed to delete stale/missing OTP record', {
-                    requestId,
-                    emailKey,
-                    error: deleteError?.message || deleteError
-                });
-            }
             return res.status(404).json({
                 error: 'OTP not found or expired',
                 success: false
@@ -238,10 +196,7 @@ export const handleVerifyOTP = asyncWrapper(async (req, res) => {
         });
         // Check if OTP is already verified
         if (otpData.verified) {
-            logger.warn('handleVerifyOTP: OTP already used', {
-                requestId,
-                emailKey
-            });
+            logger.warn('handleVerifyOTP: OTP already used', { requestId, emailKey });
             return res.status(400).json({
                 error: 'OTP already used',
                 success: false
@@ -298,10 +253,7 @@ export const handleVerifyOTP = asyncWrapper(async (req, res) => {
                 attemptsLeft: 2 - otpData.attempts
             });
         }
-        logger.info('handleVerifyOTP: OTP verification successful', {
-            requestId,
-            emailKey
-        });
+        logger.info('handleVerifyOTP: OTP verification successful', { requestId, emailKey });
         // OTP is valid - mark as verified
         logger.debug('handleVerifyOTP: Updating verification status in database', { requestId, emailKey, userId });
         await Promise.all([
@@ -320,31 +272,7 @@ export const handleVerifyOTP = asyncWrapper(async (req, res) => {
             userId,
             verifiedAt: new Date().toISOString()
         });
-        // Send email notification to user confirming verification
-        try {
-            logger.debug('handleVerifyOTP: Sending verification confirmation email', {
-                requestId,
-                email: email.replace(/(.{2}).*(@.*)/, '$1***$2'),
-                template: 'default'
-            });
-            await sendEmail(email, 'Email Verified', 'default', {
-                title: 'Email Verified',
-                text: 'Your email has been successfully verified. You can now continue using Medvive.'
-            });
-            logger.info('handleVerifyOTP: Verification confirmation email sent successfully', {
-                requestId,
-                email: email.replace(/(.{2}).*(@.*)/, '$1***$2')
-            });
-        }
-        catch (emailError) {
-            logger.error('handleVerifyOTP: Failed to send verification confirmation email', {
-                requestId,
-                email: email.replace(/(.{2}).*(@.*)/, '$1***$2'),
-                error: emailError
-            });
-            // Do not fail the verification response due to email errors
-        }
-        res.status(200).json({
+        return res.status(200).json({
             message: 'Email verified successfully',
             success: true
         });
@@ -361,4 +289,5 @@ export const handleVerifyOTP = asyncWrapper(async (req, res) => {
         });
     }
 });
+//# sourceMappingURL=authController.js.map
 //# sourceMappingURL=authController.js.map

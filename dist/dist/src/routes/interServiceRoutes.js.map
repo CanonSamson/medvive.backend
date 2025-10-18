@@ -1,0 +1,1 @@
+{"version":3,"file":"interServiceRoutes.js","sourceRoot":"","sources":["../../../src/routes/interServiceRoutes.js"],"names":[],"mappings":"AAAA,OAAO,EAAE,MAAM,EAAE,MAAM,SAAS,CAAC;AACjC,OAAO,EAAE,gBAAgB,GAAG,MAAM,0CAA0C,CAAC;AAC7E,MAAM,MAAM,GAAG,MAAM,EAAE,CAAC;AACxB,MAAM,CAAC,IAAI,CAAC,QAAQ,EAAE,gBAAgB,CAAC,CAAC;AACxC,MAAM,CAAC,MAAM,kBAAkB,GAAG,MAAM,CAAC;AACzC,8CAA8C"}

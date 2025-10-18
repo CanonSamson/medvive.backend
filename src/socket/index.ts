@@ -55,6 +55,8 @@ export default (
         io.emit('user:online-events:listen', onlineUsers)
       })
 
+      
+
       socket.on('disconnect', () => {
         console.log(`${userId} disconnected`)
         io.emit('user:online-events:listen', { userId, online: false })

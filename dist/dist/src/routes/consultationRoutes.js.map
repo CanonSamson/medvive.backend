@@ -1,0 +1,1 @@
+{"version":3,"file":"consultationRoutes.js","sourceRoot":"","sources":["../../../src/routes/consultationRoutes.js"],"names":[],"mappings":"AAAA,OAAO,EAAE,MAAM,EAAE,MAAM,SAAS,CAAC;AACjC,OAAO,EAAE,sBAAsB,EAAE,MAAM,sCAAsC,CAAC;AAC9E,MAAM,MAAM,GAAG,MAAM,EAAE,CAAC;AACxB,MAAM,CAAC,IAAI,CAAC,aAAa,EAAE,sBAAsB,CAAC,CAAC;AACnD,MAAM,CAAC,MAAM,kBAAkB,GAAG,MAAM,CAAC;AACzC,8CAA8C"}
