@@ -69,3 +69,13 @@ export interface OTPData {
   createdAt: string
   verifiedAt?: string
 }
+
+declare module 'node-schedule' {
+  export interface Job {
+    cancel(): boolean
+  }
+  export function scheduleJob(
+    date: Date,
+    callback: (fireDate: Date) => void
+  ): Job
+}
