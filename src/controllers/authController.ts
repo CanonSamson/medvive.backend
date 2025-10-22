@@ -380,43 +380,150 @@ export const handleVerifyOTP = asyncWrapper(
 
       // Send email notification to user confirming verification
       try {
-        logger.debug('handleVerifyOTP: Sending verification confirmation email', {
-          requestId,
-          email: email.replace(/(.{2}).*(@.*)/, '$1***$2'),
-          template: 'default'
-        })
-
-        await sendEmail(
-          email,
-          'Email Verified',
-          'default',
+        logger.debug(
+          'handleVerifyOTP: Sending verification confirmation email',
           {
-            title: 'Email Verified',
-            text: 'Your email has been successfully verified. You can now continue using Medvive.'
+            requestId,
+            email: email.replace(/(.{2}).*(@.*)/, '$1***$2'),
+            template: 'default'
           }
         )
 
-        logger.info('handleVerifyOTP: Verification confirmation email sent successfully', {
-          requestId,
-          email: email.replace(/(.{2}).*(@.*)/, '$1***$2')
+        await sendEmail(email, 'Email Verified', 'default', {
+          title: 'Email Verified',
+          text: 'Your email has been successfully verified. You can now continue using Medvive.'
         })
+
+        logger.info(
+          'handleVerifyOTP: Verification confirmation email sent successfully',
+          {
+            requestId,
+            email: email.replace(/(.{2}).*(@.*)/, '$1***$2')
+          }
+        )
       } catch (emailError) {
-        logger.error('handleVerifyOTP: Failed to send verification confirmation email', {
-          requestId,
-          email: email.replace(/(.{2}).*(@.*)/, '$1***$2'),
-          error: emailError
-        })
+        logger.error(
+          'handleVerifyOTP: Failed to send verification confirmation email',
+          {
+            requestId,
+            email: email.replace(/(.{2}).*(@.*)/, '$1***$2'),
+            error: emailError
+          }
+        )
         // Do not fail the verification response due to email errors
       }
 
-       res.status(200).json({
+      res.status(200).json({
         message: 'Email verified successfully',
         success: true
       })
-
-      
     } catch (error) {
       logger.error('handleVerifyOTP: Server error occurred', {
+        requestId,
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      })
+      return res.status(500).json({
+        error: 'Internal server error',
+        success: false
+      })
+    }
+  }
+)
+
+export const handleGetOTPTimeLeft = asyncWrapper(
+  async (req: Request, res: Response) => {
+    const requestId = Math.random().toString(36).substring(7)
+    logger.info('handleGetOTPTimeLeft: Request initiated', {
+      requestId,
+      body: req.body
+    })
+
+    try {
+      const userId = req.query?.userId as string
+
+      if (!userId) {
+        logger.warn('handleGetOTPTimeLeft: userId is required', { requestId })
+        return res.status(400).json({
+          error: 'userId is required',
+          success: false
+        })
+      }
+
+      logger.info('handleGetOTPTimeLeft: Input validation successful', {
+        requestId,
+        userId
+      })
+
+      logger.debug(
+        'handleGetOTPTimeLeft: Fetching patient record from database',
+        {
+          requestId,
+          userId
+        }
+      )
+      const patientRecord = await getDBAdmin('patients', userId)
+
+      if (!patientRecord?.data) {
+        logger.warn('handleGetOTPTimeLeft: Patient not found in database', {
+          requestId,
+          userId,
+          patientRecord
+        })
+        return res.status(404).json({
+          error: 'Patient not found',
+          success: false
+        })
+      }
+
+      const email = (patientRecord.data as any)?.email as string
+      const emailKey = email.replace(/[.#$\[\]]/g, '_')
+      logger.debug('handleGetOTPTimeLeft: Fetching OTP record', {
+        requestId,
+        emailKey
+      })
+
+      const otpRecord = await getDBAdmin('email-verification-otps', emailKey)
+      if (!otpRecord?.data) {
+        logger.info('handleGetOTPTimeLeft: No OTP record found', {
+          requestId,
+          emailKey
+        })
+        return res.status(200).json({
+          success: true,
+          exists: false,
+          expired: true,
+          remainingMs: 0,
+          remainingSeconds: 0
+        })
+      }
+
+      const { expiresAt, verified } = otpRecord.data as OTPData
+      const now = Date.now()
+      const expiryMs = new Date(expiresAt).getTime()
+      const remainingMs = Math.max(expiryMs - now, 0)
+      const remainingSeconds = Math.floor(remainingMs / 1000)
+
+      logger.info('handleGetOTPTimeLeft: Computed remaining time', {
+        requestId,
+        email: email.replace(/(.{2}).*(@.*)/, '$1***$2'),
+        verified,
+        expiresAt,
+        remainingMs,
+        remainingSeconds
+      })
+
+      return res.status(200).json({
+        success: true,
+        exists: true,
+        verified,
+        expired: remainingMs <= 0,
+        remainingMs,
+        remainingSeconds,
+        expiresAt
+      })
+    } catch (error) {
+      logger.error('handleGetOTPTimeLeft: Server error occurred', {
         requestId,
         error: error instanceof Error ? error.message : error,
         stack: error instanceof Error ? error.stack : undefined
