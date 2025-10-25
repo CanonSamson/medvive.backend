@@ -50,9 +50,11 @@ export const sendEmail = async (
 
     logger.debug('Creating email transporter')
     // Prefer explicit SMTP configuration to avoid provider-specific quirks
-    const smtpHost = process.env.SMTP_HOST || (isGmail ? 'smtp.gmail.com' : undefined)
+    const smtpHost =
+      process.env.SMTP_HOST || (isGmail ? 'smtp.gmail.com' : undefined)
     const smtpPort = Number(process.env.SMTP_PORT || (isGmail ? 465 : 587))
-    const smtpSecure = (process.env.SMTP_SECURE || (isGmail ? 'true' : 'false')) === 'true'
+    const smtpSecure =
+      (process.env.SMTP_SECURE || (isGmail ? 'true' : 'false')) === 'true'
 
     const transporter = nodemailer.createTransport({
       host: smtpHost,
@@ -104,7 +106,7 @@ export const sendEmail = async (
     })
 
     const result = await transporter.sendMail(mailOptions)
-    
+
     logger.info('Email sent successfully', {
       messageId: result.messageId,
       response: result.response,
@@ -124,6 +126,5 @@ export const sendEmail = async (
       subject,
       templateName
     })
-    throw error
   }
 }
