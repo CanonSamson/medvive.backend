@@ -45,6 +45,12 @@ export const handleSendOTP = asyncWrapper(
       }
 
       const { userId } = result.data
+
+      res.status(201).json({
+        message: 'OTP sent successfully',
+        success: true
+      })
+
       logger.info('handleSendOTP: Input validation successful', {
         requestId,
         userId
@@ -135,21 +141,11 @@ export const handleSendOTP = asyncWrapper(
           email: email.replace(/(.{2}).*(@.*)/, '$1***$2'),
           expiresAt: expiresAt.toISOString()
         })
-
-        return res.status(201).json({
-          message: 'OTP sent successfully',
-          success: true,
-          expiresAt: expiresAt.toISOString()
-        })
       } catch (emailError) {
         logger.error('handleSendOTP: Email sending failed', {
           requestId,
           error: emailError,
           email: email.replace(/(.{2}).*(@.*)/, '$1***$2')
-        })
-        return res.status(500).json({
-          error: 'Failed to send OTP email',
-          success: false
         })
       }
     } catch (error) {
