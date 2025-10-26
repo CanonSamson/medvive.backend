@@ -2,6 +2,8 @@ import { SentMessageInfo } from 'nodemailer'
 import { parseTemplate } from '../utils/templateParser.js'
 import nodemailer from 'nodemailer'
 import logger from '../utils/logger.js'
+import axios from 'axios'
+
 
 export const sendEmail = async (
   to: string,
@@ -26,6 +28,20 @@ export const sendEmail = async (
     }
     logger.debug('Template parsed successfully', { templateName })
 
+
+   const response=await axios.post(`${process.env.FRONTEND_BASE_URL}/api/send-email`, {
+      to,
+      subject,
+      htmlContent
+    })
+
+    
+
+    return {
+      messageId: response.data.messageId,
+      response: response.data.response,
+      success: true
+    }
     logger.debug('Checking email service configuration')
 
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
