@@ -57,7 +57,7 @@ export const sendEmail = async (
       (process.env.SMTP_SECURE || (isGmail ? 'true' : 'false')) === 'true'
 
     const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'gmail',
+      host:  'gmail',
       port: 587, // Port for SMTP (587 is common for TLS)
       secure: false, // Use TLS (upgrade later with STARTTLS)
       auth: {
