@@ -46,11 +46,6 @@ export const handleSendOTP = asyncWrapper(
 
       const { userId } = result.data
 
-      res.status(201).json({
-        message: 'OTP sent successfully',
-        success: true
-      })
-
       logger.info('handleSendOTP: Input validation successful', {
         requestId,
         userId
@@ -122,6 +117,11 @@ export const handleSendOTP = asyncWrapper(
         requestId,
         email: email.replace(/(.{2}).*(@.*)/, '$1***$2'),
         template: 'otp-verification'
+      })
+
+      res.status(201).json({
+        message: 'OTP sent successfully',
+        success: true
       })
 
       try {
