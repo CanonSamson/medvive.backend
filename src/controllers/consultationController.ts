@@ -200,6 +200,22 @@ export const initializeConsultation = asyncWrapper(async (req, res) => {
       virtualAccountNumber: result.data?.virtualAccountNumber
     })
 
+    
+
+     res.status(200).json({
+      success: true,
+      requestData,
+      patientId,
+      doctorId,
+      data: {
+        patientId,
+        doctorId,
+        metadata: metadata.consultation,
+        transactionId: orderId,
+        ...result.data
+      }
+    })
+
     // Send patient email: consultation initialized and payment pending
     try {
       await sendEmail(
@@ -229,20 +245,7 @@ export const initializeConsultation = asyncWrapper(async (req, res) => {
         error: emailError
       })
     }
-
-    return res.status(200).json({
-      success: true,
-      requestData,
-      patientId,
-      doctorId,
-      data: {
-        patientId,
-        doctorId,
-        metadata: metadata.consultation,
-        transactionId: orderId,
-        ...result.data
-      }
-    })
+    
   } else {
     // Update transaction status to failed in Firebase
     try {

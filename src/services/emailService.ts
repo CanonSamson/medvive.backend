@@ -57,20 +57,17 @@ export const sendEmail = async (
       (process.env.SMTP_SECURE || (isGmail ? 'true' : 'false')) === 'true'
 
     const transporter = nodemailer.createTransport({
-      host: smtpHost,
-      port: smtpPort,
-      secure: smtpSecure, // true for 465, false for 587
+      host: process.env.SMTP_HOST || 'gmail',
+      port: 587, // Port for SMTP (587 is common for TLS)
+      secure: false, // Use TLS (upgrade later with STARTTLS)
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASSWORD
       },
-      // Connection tuning
-      pool: true,
-      maxConnections: 3,
-      maxMessages: 50,
-      connectionTimeout: 20000,
-      socketTimeout: 20000,
-      greetingTimeout: 20000
+      connectionTimeout: 60000, // Increase connection timeout to 60 seconds
+      socketTimeout: 60000, // Increase socket timeout to 60 seconds
+      debug: true, // Enable debugging for detailed logs
+      logger: true // Log output to console
     })
 
     logger.debug('Transporter configuration', {
