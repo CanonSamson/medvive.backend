@@ -139,11 +139,11 @@ async function startServer () {
     app.use(passport.initialize())
     app.use(passport.session())
 
-    passport.serializeUser(function (user, cb) {
+    passport.serializeUser(function (user: any, cb: (err: any, id?: unknown) => void) {
       cb(null, user)
     })
 
-    passport.deserializeUser(function (user: any, cb) {
+    passport.deserializeUser(function (user: any, cb: (err: any, user?: any) => void) {
       cb(null, user)
     })
     app.get(

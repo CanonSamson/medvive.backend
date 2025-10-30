@@ -35,9 +35,7 @@
     "socket.io": "^4.8.1",
     "uuid": "^13.0.0",
     "winston": "^3.17.0",
-    "zod": "^4.1.11"
-  },
-  "devDependencies": {
+    "zod": "^4.1.11",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/express-session": "^1.18.2",
@@ -47,7 +45,9 @@
     "@types/node-schedule": "^2.1.8",
     "@types/nodemailer": "^6.4.17",
     "@types/passport": "^1.0.17",
-    "@types/passport-google-oauth": "^1.0.45",
+    "@types/passport-google-oauth": "^1.0.45"
+  },
+  "devDependencies": {
     "nodemon": "^3.1.9",
     "ts-node": "^10.9.2",
     "tsx": "^4.19.3",

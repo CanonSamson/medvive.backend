@@ -23,7 +23,12 @@ if (!clientID || !clientSecret || !backendUrl) {
       clientID,
       clientSecret
     },
-    async function (accessToken, refreshToken, profile, cb) {
+    async function (
+      accessToken: string,
+      refreshToken: string,
+      profile: any,
+      cb: (err: any, user?: any) => void
+    ) {
       try {
         logger.debug('Google OAuth callback received', {
           provider: 'google',

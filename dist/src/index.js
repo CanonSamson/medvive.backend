@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import http from 'http';
 import morgan from 'morgan';
+import './services/passport.strategies';
 import { Server } from 'socket.io';
 import logger from './utils/logger.js';
 import { authEmailRoutes } from './routes/authEmailRoutes.js';
@@ -12,8 +13,12 @@ import initializeSocket from './socket/index.js';
 import { initializeFirebaseAdmin } from './utils/firebase/admin.js';
 import { authRoutes } from './routes/authRoutes.js';
 import { consultationRoutes } from './routes/consultationRoutes.js';
+import { walletRoutes } from './routes/walletRoutes.js';
 import { discordClient } from '../discord/index.js';
 import { restoreUnSeenMessageJobs } from './utils/scheduler.js';
+import passport from 'passport';
+import './services/passport.strategies';
+import session from 'express-session';
 // Configure logging
 const morganFormat = ':method :url :status :response-time ms';
 const loggingMiddleware = morgan(morganFormat, {
@@ -68,19 +73,21 @@ const setupCleanupHandlers = () => {
 };
 async function startServer() {
     try {
-        dotenv.config();
+        const app = express();
         discordClient.login(process.env.DISTOKEN);
         // Initialize Firebase Admin SDK
         initializeFirebaseAdmin();
         logger.info('Firebase Admin SDK initialized');
         // Restore scheduled jobs after Firebase is ready
         await restoreUnSeenMessageJobs();
-        const app = express();
         const PORT = process.env.PORT;
         // Apply middleware
         app.use(loggingMiddleware);
         app.use(configureCors());
         app.use(express.json());
+        app.use(express.json({ limit: '100mb' }));
+        app.use(express.urlencoded({ limit: '100mb', extended: true }));
+        dotenv.config();
         // Create HTTP server and Socket.IO instance
         const server = http.createServer(app);
         const io = new Server(server, {
@@ -98,9 +105,36 @@ async function startServer() {
         app.use('/v1/api/kyc/email', kycEmailRoutes);
         app.use('/v1/api/payments/alatpay', alatPayRoutes);
         app.use('/v1/api/consultation', consultationRoutes);
+        app.use('/v1/api/wallets', walletRoutes);
         app.get('/health', healthCheck);
         app.get('/', (_req, res) => {
-            res.json({ message: 'Notification Service is running!' });
+            res.json({ message: ' Service is running!' });
+        });
+        app.use(session({
+            resave: false,
+            saveUninitialized: true,
+            secret: process.env.SESSION_SECRET || 'my-secret'
+        }));
+        app.use(passport.initialize());
+        app.use(passport.session());
+        passport.serializeUser(function (user, cb) {
+            cb(null, user);
+        });
+        passport.deserializeUser(function (user, cb) {
+            cb(null, user);
+        });
+        app.get('/v1/api/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+        app.get('/v1/api/auth/google/callback', passport.authenticate('google', {
+            failureRedirect: `${process.env.FRONTEND_URL}`,
+            failureMessage: true
+        }), async (req, res) => {
+            try {
+                res.redirect(`${process.env.FRONTEND_URL}/${req?.user.action}?token=${req?.user.token}`);
+            }
+            catch (error) {
+                logger.error('Google auth redirect failed:', error);
+                res.redirect(`${process.env.FRONTEND_URL}/login?error=auth_failed`);
+            }
         });
         // Apply error handling
         app.use(errorHandler);
