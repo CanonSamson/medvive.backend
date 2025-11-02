@@ -68,7 +68,7 @@ export async function sendApprovalPrompt (
   await message.edit({ components: [row] })
 
   await adminDb
-    .collection('discordApprovalTokens')
+    .collection('discord-approval-tokens')
     .doc(tokenId)
     .update({ channelId, messageId: message.id })
   logger.info('Sent consultation payout approval prompt', {
@@ -158,7 +158,7 @@ export async function sendWithdrawalApprovalPrompt (
   await message.edit({ components: [row] })
 
   await adminDb
-    .collection('discordApprovalTokens')
+    .collection('discord-approval-tokens')
     .doc(tokenId)
     .update({ channelId, messageId: message.id })
   logger.info('Sent withdrawal approval prompt', {

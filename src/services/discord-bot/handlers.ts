@@ -36,7 +36,7 @@ export function registerApprovalButtonsHandler() {
       }
 
       const adminDb =  getAdminFirestore()
-      const tokenSnap = await adminDb.collection('discordApprovalTokens').doc(tokenId).get()
+      const tokenSnap = await adminDb.collection('discord-approval-tokens').doc(tokenId).get()
       if (!tokenSnap.exists) {
         return safeRespond(interaction, 'Unknown interaction: token not found.')
       }
@@ -53,7 +53,7 @@ export function registerApprovalButtonsHandler() {
             p.patientId,
             p.walletTransactionId
           )
-          await adminDb.collection('discordApprovalTokens').doc(tokenId).update({ status: 'APPROVED', processedAt: new Date().toISOString() })
+          await adminDb.collection('discord-approval-tokens').doc(tokenId).update({ status: 'APPROVED', processedAt: new Date().toISOString() })
           return safeRespond(interaction, 'Consultation payout approved.')
         } else {
           await consultationPaymentService.rejectInitializedPaymentToDoctorWallet(
@@ -63,7 +63,7 @@ export function registerApprovalButtonsHandler() {
             p.walletTransactionId,
             'Rejected via Discord'
           )
-          await adminDb.collection('discordApprovalTokens').doc(tokenId).update({ status: 'REJECTED', processedAt: new Date().toISOString() })
+          await adminDb.collection('discord-approval-tokens').doc(tokenId).update({ status: 'REJECTED', processedAt: new Date().toISOString() })
           return safeRespond(interaction, 'Consultation payout rejected.')
         }
       }
@@ -72,11 +72,11 @@ export function registerApprovalButtonsHandler() {
         const wid = tokenData?.payload?.withdrawalId
         if (action === 'approve') {
           const result = await withdrawalService.approveWithdrawal(wid, { approvedBy: interaction?.user?.id })
-          await adminDb.collection('discordApprovalTokens').doc(tokenId).update({ status: 'APPROVED', processedAt: new Date().toISOString() })
+          await adminDb.collection('discord-approval-tokens').doc(tokenId).update({ status: 'APPROVED', processedAt: new Date().toISOString() })
           return safeRespond(interaction, result.message || 'Withdrawal approved.')
         } else {
           const result = await withdrawalService.rejectWithdrawal(wid, { rejectedBy: interaction?.user?.id, reason: 'Rejected via Discord' })
-          await adminDb.collection('discordApprovalTokens').doc(tokenId).update({ status: 'REJECTED', processedAt: new Date().toISOString() })
+          await adminDb.collection('discord-approval-tokens').doc(tokenId).update({ status: 'REJECTED', processedAt: new Date().toISOString() })
           return safeRespond(interaction, result.message || 'Withdrawal rejected.')
         }
       }

@@ -3,7 +3,7 @@ import type { ApprovalTokenData, ApprovalPayload, WithdrawalApprovalPayload } fr
 
 export async function createApprovalToken(data: ApprovalTokenData): Promise<string> {
   const adminDb = await getAdminFirestore()
-  const doc = await adminDb.collection('discordApprovalTokens').add(data)
+  const doc = await adminDb.collection('discord-approval-tokens').add(data)
   return doc.id
 }
 
