@@ -11,6 +11,8 @@ import {
 import { getAdminFirestore } from '../utils/firebase/admin.js'
 import logger from '../utils/logger.js'
 import { sendEmail } from '../services/emailService.js'
+import { consultationPaymentService } from '../services/consultation/payment.js'
+import { discordBotService } from '../services/discord-bot/index.js'
 import { v4 as uuidv4 } from 'uuid'
 
 export const initializeConsultation = asyncWrapper(async (req, res) => {
@@ -200,9 +202,7 @@ export const initializeConsultation = asyncWrapper(async (req, res) => {
       virtualAccountNumber: result.data?.virtualAccountNumber
     })
 
-    
-
-     res.status(200).json({
+    res.status(200).json({
       success: true,
       requestData,
       patientId,
@@ -245,7 +245,6 @@ export const initializeConsultation = asyncWrapper(async (req, res) => {
         error: emailError
       })
     }
-    
   } else {
     // Update transaction status to failed in Firebase
     try {
@@ -648,5 +647,254 @@ export const consultationPaymentCallback = asyncWrapper(async (req, res) => {
       requestId,
       timestamp: new Date().toISOString()
     })
+  }
+})
+
+export const endConsultation = asyncWrapper(async (req, res) => {
+  const { consultationId, patientId, doctorId } = {
+    ...req.body,
+    ...req.params
+  } as { consultationId: string; patientId: string; doctorId: string }
+
+  const timestamp = new Date().toISOString()
+
+  if (!consultationId || !patientId || !doctorId) {
+    logger.warn('endConsultation: Missing required identifiers', {
+      consultationId,
+      patientId,
+      doctorId
+    })
+    return res.status(400).json({
+      success: false,
+      error: 'consultationId, patientId and doctorId are required'
+    })
+  }
+
+  try {
+    const consultationRecord = await getDBAdmin('consultations', consultationId)
+    if (!consultationRecord?.data) {
+      logger.warn('endConsultation: Consultation not found', { consultationId })
+      return res
+        .status(404)
+        .json({ success: false, error: 'Consultation not found' })
+    }
+
+    const updatedConsultation = {
+      ...consultationRecord.data,
+      status: 'ENDED',
+      active: false,
+      endedAt: timestamp
+    }
+
+    // Update consultation document
+    await updateDBAdmin('consultations', consultationId, updatedConsultation)
+
+    // Update chat metadata if a chat exists for this patient/doctor
+    try {
+      const db = getAdminFirestore()
+      const chatsQuery = await db
+        .collection('consultations-chats')
+        .where('patientId', '==', patientId)
+        .where('doctorId', '==', doctorId)
+        .limit(1)
+        .get()
+
+      if (!chatsQuery.empty) {
+        const chatDoc = chatsQuery.docs[0]
+        await updateDBAdmin('consultations-chats', chatDoc.id, {
+          lastMessage: 'Ended Consultation 🥳',
+          lastMessageAt: timestamp,
+          seen: { [doctorId]: true, [patientId]: false },
+          unseenMessages: { [doctorId]: 0, [patientId]: 1 },
+          active: false
+        })
+      }
+    } catch (chatError) {
+      logger.error('endConsultation: Failed to update chat metadata', {
+        consultationId,
+        patientId,
+        doctorId,
+        error: chatError
+      })
+      // Non-blocking: continue response even if chat update fails
+    }
+
+    logger.info('endConsultation: Consultation ended successfully', {
+      consultationId,
+      patientId,
+      doctorId
+    })
+    return res.status(200).json({ success: true, consultationId })
+  } catch (error: any) {
+    logger.error('endConsultation: Error updating consultation', {
+      consultationId,
+      patientId,
+      doctorId,
+      error: error?.message || error
+    })
+    return res
+      .status(500)
+      .json({ success: false, error: 'Failed to end consultation' })
+  }
+})
+
+export const consultationSuccessful = asyncWrapper(async (req, res) => {
+  const { consultationId, patientId, doctorId } = {
+    ...req.body,
+    ...req.params
+  } as { consultationId: string; patientId: string; doctorId: string }
+
+  const timestamp = new Date().toISOString()
+
+  if (!consultationId || !patientId || !doctorId) {
+    logger.warn('consultationSuccessful: Missing required identifiers', {
+      consultationId,
+      patientId,
+      doctorId
+    })
+    return res.status(400).json({
+      success: false,
+      error: 'consultationId, patientId and doctorId are required'
+    })
+  }
+
+  try {
+    const consultationRecord = await getDBAdmin('consultations', consultationId)
+    if (!consultationRecord?.data) {
+      logger.warn('consultationSuccessful: Consultation not found', {
+        consultationId
+      })
+      return res
+        .status(404)
+        .json({ success: false, error: 'Consultation not found' })
+    }
+
+    const updatedConsultation = {
+      ...consultationRecord.data,
+      status: 'SUCCESSFUL',
+      active: false,
+      endedAt: timestamp
+    }
+
+    // Update consultation document
+    await updateDBAdmin('consultations', consultationId, updatedConsultation)
+
+    // Update chat metadata if a chat exists for this patient/doctor
+    try {
+      const db = getAdminFirestore()
+      const chatsQuery = await db
+        .collection('consultations-chats')
+        .where('patientId', '==', patientId)
+        .where('doctorId', '==', doctorId)
+        .limit(1)
+        .get()
+
+      if (!chatsQuery.empty) {
+        const chatDoc = chatsQuery.docs[0]
+        await updateDBAdmin('consultations-chats', chatDoc.id, {
+          lastMessage: 'Successful Consultation 🥳',
+          lastMessageAt: timestamp,
+          seen: { [doctorId]: true, [patientId]: false },
+          unseenMessages: { [doctorId]: 0, [patientId]: 1 },
+          active: false
+        })
+      }
+    } catch (chatError) {
+      logger.error('consultationSuccessful: Failed to update chat metadata', {
+        consultationId,
+        patientId,
+        doctorId,
+        error: chatError
+      })
+      // Non-blocking: continue response even if chat update fails
+    }
+
+    res.status(200).json({ success: true, consultationId })
+
+    //  Send success email to patient and doctor
+
+    logger.info('consultationSuccessful: Consultation marked successful', {
+      consultationId,
+      patientId,
+      doctorId
+    })
+    // Initialize a pending wallet transaction for the doctor's payout via service
+    const walletInit =
+      await consultationPaymentService.initializePaymentToDoctorWallet(
+        consultationId,
+        doctorId,
+        patientId
+      )
+    if (walletInit?.success) {
+      logger.info(
+        'consultationSuccessful: Wallet transaction initialized (PENDING)',
+        {
+          consultationId,
+          doctorId,
+          walletTransactionId: walletInit.walletTransactionId,
+          amount: walletInit.data?.amount
+        }
+      )
+
+      // Send Discord approval prompt to admins
+      try {
+        const channelId = process.env.DISCORD_CONSULTATION_PAYMENT_CHANNEL_ID
+        if (!channelId) {
+          logger.error(
+            'consultationSuccessful: Discord channel ID not configured'
+          )
+          return res.status(500).json({
+            success: false,
+            error: 'Discord channel ID not configured'
+          })
+        }
+        const amountStr = walletInit.data?.amount
+          ? `₦${Number(walletInit.data.amount).toLocaleString('en-NG')}`
+          : 'unknown amount'
+        await discordBotService.sendApprovalPrompt(
+          channelId,
+          `Approve payout to doctor wallet for consultation ${consultationId} (${amountStr}).`,
+          {
+            consultationId,
+            doctorId,
+            patientId,
+            walletTransactionId: walletInit.walletTransactionId
+          }
+        )
+        logger.info('consultationSuccessful: Discord approval prompt sent', {
+          consultationId,
+          doctorId,
+          patientId,
+          channelId
+        })
+      } catch (discordError) {
+        logger.error('consultationSuccessful: Failed to send Discord prompt', {
+          consultationId,
+          doctorId,
+          patientId,
+          error: (discordError as any)?.message || discordError
+        })
+      }
+    } else {
+      logger.error(
+        'consultationSuccessful: Failed to initialize wallet transaction',
+        {
+          consultationId,
+          doctorId,
+          error: walletInit?.error
+        }
+      )
+      // Non-blocking: do not fail the consultation endpoint if wallet init fails
+    }
+  } catch (error: any) {
+    logger.error('consultationSuccessful: Error updating consultation', {
+      consultationId,
+      patientId,
+      doctorId,
+      error: error?.message || error
+    })
+    return res
+      .status(500)
+      .json({ success: false, error: 'Failed to update consultation status' })
   }
 })
