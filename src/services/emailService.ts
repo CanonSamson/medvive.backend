@@ -1,9 +1,7 @@
 import { SentMessageInfo } from 'nodemailer'
 import { parseTemplate } from '../utils/templateParser.js'
-import nodemailer from 'nodemailer'
 import logger from '../utils/logger.js'
-import axios from 'axios'
-
+import { Resend } from 'resend'
 
 export const sendEmail = async (
   to: string,
@@ -28,80 +26,60 @@ export const sendEmail = async (
     }
     logger.debug('Template parsed successfully', { templateName })
 
+    const apiKey = process.env.RESEND_API_KEY
+    const fromEmail = process.env.EMAIL_FROM
+    const fromName = process.env.EMAIL_FROM_NAME || 'Medvive'
 
-   const response=await axios.post(`${process.env.FRONTEND_BASE_URL}/api/send-email`, {
-      to,
-      subject,
-      htmlContent
-    })
-
-    
-
-    return {
-      messageId: response.data.messageId,
-      response: response.data.response,
-      success: true
-    }
-    logger.debug('Checking email service configuration')
-
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
-      logger.error('Email auth credentials missing', {
-        hasEmailUser: !!process.env.EMAIL_USER,
-        hasEmailPassword: !!process.env.EMAIL_PASSWORD
-      })
-      throw new Error('Email user/password are not configured')
+    if (!apiKey) {
+      logger.error('RESEND_API_KEY is not set in environment variables')
+      throw new Error('Missing RESEND_API_KEY')
     }
 
-    logger.debug('Creating email transporter')
-
-    const transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 587,
-      secure: false,
-      requireTLS: true,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASSWORD 
-      },
- 
-    })
-
-    // Verify transporter connection
-    logger.debug('Verifying transporter connection')
-    try {
-      await transporter.verify()
-      logger.debug('Transporter verified successfully')
-    } catch (verifyError: any) {
-      logger.error('Transporter verification failed', {
-        message: verifyError.message,
-        code: verifyError.code
-      })
-      throw new Error(`Email service connection failed: ${verifyError.message}`)
+    if (!fromEmail) {
+      logger.error(
+        'EMAIL_FROM is not set. Use an address on your verified domain'
+      )
+      throw new Error('Missing EMAIL_FROM')
     }
 
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to,
+    if (!fromEmail.includes('@')) {
+      logger.error(
+        'EMAIL_FROM must be a full email address like noreply@medvive.ng',
+        {
+          provided: fromEmail
+        }
+      )
+      throw new Error('Invalid EMAIL_FROM value: expected an email address')
+    }
+
+    const resend = new Resend(apiKey)
+
+    const { data, error } = await resend.emails.send({
+      from: `${fromName} <${fromEmail}>`,
+      to: [to],
       subject,
       html: htmlContent
+    })
+
+    if (error) {
+      return console.error({ error })
     }
 
-    logger.info('Sending email', {
-      from: process.env.EMAIL_USER,
-      to,
-      subject
-    })
+    console.log({ data })
 
-    const result = await transporter.sendMail(mailOptions)
+    // const response = await axios.post(
+    //   `${process.env.FRONTEND_BASE_URL}/api/send-email`,
+    //   {
+    //     to,
+    //     subject,
+    //     htmlContent
+    //   }
+    // )
 
-    logger.info('Email sent successfully', {
-      messageId: result.messageId,
-      response: result.response,
-      to,
-      subject
-    })
-
-    return result
+    return {
+      messageId: data.id,
+      success: true
+    }
   } catch (error: any) {
     logger.error('Error sending email:', {
       message: error.message,
