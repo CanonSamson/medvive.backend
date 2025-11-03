@@ -4,7 +4,7 @@ import { Request } from 'express'
 declare module 'express-serve-static-core' {
   interface Request {
     id?: string
-    roles?: string[]
+    role?: "PATIENT" | "DOCTOR"
     channelRoles?: string[]
   }
 }
@@ -58,6 +58,9 @@ export interface DoctorData {
   availableSlots?: AvailabilityData | null
   consultationFee?: number | null
   sessionDuration?: string | null
+  careerDetails?:  {
+    specialty?: string | null
+  } | null
 }
 
 export interface OTPData {

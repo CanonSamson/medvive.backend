@@ -19,6 +19,7 @@ import { restoreUnSeenMessageJobs } from './utils/scheduler.js'
 import passport from 'passport'
 import './services/passport.strategies'
 import session from 'express-session'
+// import admin from 'firebase-admin'
 
 // Configure logging
 const morganFormat = ':method :url :status :response-time ms'
@@ -139,11 +140,17 @@ async function startServer () {
     app.use(passport.initialize())
     app.use(passport.session())
 
-    passport.serializeUser(function (user: any, cb: (err: any, id?: unknown) => void) {
+    passport.serializeUser(function (
+      user: any,
+      cb: (err: any, id?: unknown) => void
+    ) {
       cb(null, user)
     })
 
-    passport.deserializeUser(function (user: any, cb: (err: any, user?: any) => void) {
+    passport.deserializeUser(function (
+      user: any,
+      cb: (err: any, user?: any) => void
+    ) {
       cb(null, user)
     })
     app.get(
@@ -186,3 +193,29 @@ async function startServer () {
 }
 
 startServer()
+
+// async function deleteAllUsers () {
+//   try {
+//     let nextPageToken
+//     let deletedCount = 0
+
+//     do {
+//       // list up to 1000 users at a time
+//       const listUsersResult = await admin.auth().listUsers(1000, nextPageToken)
+
+//       const uids = listUsersResult.users.map(user => user.uid)
+
+//       if (uids.length > 0) {
+//         await admin.auth().deleteUsers(uids)
+//         deletedCount += uids.length
+//         console.log(`Deleted ${uids.length} users`)
+//       }
+
+//       nextPageToken = listUsersResult.pageToken
+//     } while (nextPageToken)
+
+//     console.log(`✅ Finished deleting ${deletedCount} users.`)
+//   } catch (error) {
+//     console.error('Error deleting users:', error)
+//   }
+// }

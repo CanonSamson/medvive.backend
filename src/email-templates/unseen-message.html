@@ -5,41 +5,46 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{fullName}} just messaged you</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 </head>
 
-<body style="font-family: 'Arial', sans-serif; text-align: center; background-color: #f4f4f4;">
-    <a href="http://medvive.com.ng/">
-        <img src="https://i.ibb.co/XbQ5JFt/Group-427325990.png" style="max-width: 100%; height: auto;">
-    </a>
-    <div style="padding: 20px;">
 
-        <div
-            style="width: 100%; max-width: 500px; margin: 0px auto; border: 1px solid #D9D9D9; border-radius: 4px; padding: 40px 4px; background-color: #F0F0F0;">
-            <div style="padding: 10px;">
-                <h1 style="color: black; font-size: 22px;">
-                    {{unseenMessages}} new message awaits your response
-                </h1>
+<body
+    style="margin: 0; padding: 20px 0; font-family: 'Inter', sans-serif; background-color: #F9F9FA; line-height: 1.5; min-height: 100vh;">
 
-                <img src="{{profileImage}}" alt="" style="width: 50px; height: 50px; object-fit: cover; border-radius: 100%;">
-                <p style="font-weight: 700; font-size: 16px; color: #222222;">{{fullName}}</p>
-                <p style="color: #222222; font-size: 14px;">
-                    Thanks for choosing Medvive! To view the message, please click on the "View Message" button below.
-                </p>
-                <a href="http://medvive.com.ng/{{userType}}">
-                    <button
-                        style="padding: 14px 24px; border: none; color: white; background-color: #1648CE; border-radius: 100px;">
-                        View message
-                    </button>
-                </a>
-            </div>
+    <div
+        style="width: 100%; background-color: #F2F2F2; padding: 20px 0; text-align: center; max-width: 500px; margin: 0 auto 0 auto;">
+        <div style="margin: 0 auto; max-width: 530px; width: 100%;">
+            <a href="https://medvive.ng/" style="text-decoration: none; display: inline-block;">
+                <img src="http://medvive.ng/logo/medvive-long-logo.png" alt="Logo"
+                    style="height: 40px; width: auto; display: block; margin: 0 auto; max-width: 100%;">
+            </a>
         </div>
     </div>
 
-    <div>
-        <span
-            style="max-width: 80%; margin: 0px auto; display: flex; margin-top: 50px; padding-bottom: 100px; font-size: 12px; text-align: center; justify-content: center;">
-            You’re receiving this email because you recently signed up for a Medvive account.
-        </span>
+
+    <div
+        style="background-color: white; margin: 0 auto 20px auto; padding: 50px 15px 30px; width: calc(100% - 60px); max-width: 470px; text-align: center;">
+        <h1 style="color: black; font-size: 22px;">
+            {{unseenMessages}} new message awaits your response
+        </h1>
+        <img src="{{profileImage}}" alt="" style="width: 100px; height: 100px; object-fit: cover; border-radius: 100%;">
+        <p style="font-weight: 700; font-size: 16px; color: #222222;">{{fullName}}</p>
+        <div
+            style="padding-top: 14px; display: block; width: 100%; position: relative; margin: 0 auto;">
+
+            <p style="color: #969696; font-size: 14px; padding-bottom: 14px; font-family: 'Inter', sans-serif;">
+           Thanks for choosing Medvive! To view the message, please click on the “View message” button below. 
+            </p>
+
+            <a href="http://medvive.com.ng/{{userType}}">
+                <button
+                    style="padding: 16px 24px; width: 100%; border: none; color: white; background-color: #1648CE; border-radius: 12px;">
+                    View message
+                </button>
+            </a>
+        </div>
+    </div>
     </div>
 </body>
 

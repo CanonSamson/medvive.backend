@@ -4,10 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome Email</title>
+    <title>Consultation Started</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 </head>
-
 
 <body
     style="margin: 0; padding: 20px 0; font-family: 'Inter', sans-serif; background-color: #F9F9FA; line-height: 1.5; min-height: 100vh;">
@@ -25,44 +24,40 @@
 
     <div
         style="background-color: white; margin: 0 auto 20px auto; padding: 50px 15px 30px; width: calc(100% - 60px); max-width: 470px;">
+
         <p
             style="color: #969696; font-size: 14px; width: 80%; display: flex; margin-top: 4px; font-family: 'Inter', sans-serif;">
-            Welcome to Medvive, {{fullName}} — we're excited to have you on board!
+            Hi {{firstName}},
         </p>
 
         <p
             style="color: #969696; font-size: 14px; width: 80%; display: flex; margin-top: 4px; font-family: 'Inter', sans-serif;">
-            To get started, please verify your email address by clicking the button below:
+            Dr. {{doctorName}}, has just started your consultation.
+        </p>
+        <p
+            style="color: #969696; font-size: 14px; width: 80%; display: flex; margin-top: 4px; font-family: 'Inter', sans-serif;">
+            Please join the session right away to begin your appointment.
         </p>
 
-        <div>
-            <p
-                style="padding: 40px 0px 14px 0px; color: #1442BB; font-size: 24px; font-weight: 600; font-family: 'Inter', sans-serif;">
-                {{otp}}</p>
-            <p
-                style="font-size: 12px; color: #969696; font-weight: 400; margin-bottom: 14px; font-family: 'Inter', sans-serif;">
-                The OTP will expire in {{expiryMinutes}} minutes
-            </p>
-        </div>
-
-        <div
-            style="border-top: 1px solid black; padding-top: 14px; display: block; width: 90%; position: relative; justify-content: flex-start; margin: 0px 0px;">
-            <p style="color: #969696; font-size: 14px; padding-bottom: 14px; font-family: 'Inter', sans-serif;">
-                If the code above did not work for you, use the button below to verify your account
-            </p>
-
-            <p style="color: #969696; font-size: 14px; padding-bottom: 14px; font-family: 'Inter', sans-serif;">
-                Thank you for choosing Medvive — where healthcare meets simplicity
-            </p>
-
-        </div>
+        <a href="{{joinLink}}" style="display: block; width: 100%; text-decoration: none; margin: 12px 0 16px 0;">
+            <button
+                style="width: 100%; padding: 16px 32px; border: none; color: white; background-color: #1648CE; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif;">
+                Join Consultation
+            </button>
+        </a>
 
 
+        <p
+            style="color: #969696; font-size: 14px; width: 80%; display: flex; margin-top: 4px; font-family: 'Inter', sans-serif;">
+            Thank you for choosing Medvive. We’ll keep you updated every step of the way.
+        </p>
 
         <p style="color: #969696; padding-top: 26px; font-family: 'Inter', sans-serif;">
-            Warm regards, <br />
+            <span style="font-weight: 600; color: #222222;">Warm regards,</span><br />
             The Medvive Team
         </p>
+
+
     </div>
     </div>
 </body>

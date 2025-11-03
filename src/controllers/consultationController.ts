@@ -477,18 +477,16 @@ export const checkConsultationPaymentStatus = asyncWrapper(async (req, res) => {
               `Payment received - consultation confirmed with Dr. ${
                 doctorInfo?.fullName || 'your doctor'
               }`,
-              'default',
+              'consultation-confirmed-patient',
               {
                 title: 'Consultation Confirmed',
-                text: `Hi ${
-                  patientInfo?.fullName?.split(' ')[0] || 'there'
-                }, your payment has been received. Your consultation with Dr. ${
-                  doctorInfo?.fullName || ''
-                } is confirmed for ${
-                  transactionData.consultationDetails?.date
-                } at ${
-                  transactionData.consultationDetails?.time
-                }. Consultation ID: ${transactionData.consultationId}.`
+                doctorName: doctorInfo?.fullName || '',
+                patientName: patientInfo?.fullName || '',
+                transactionId: transactionData.transactionId,
+                specialty: doctorInfo?.careerDetails?.specialty || '',
+                amountPaid: `N ${transactionData.consultationDetails?.amount || 0} `,
+                date: transactionData.consultationDetails?.date || '',
+                time: transactionData.consultationDetails?.time || '',
               }
             )
             logger.info('Patient success email sent', {

@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { checkConsultationPaymentStatus, consultationPaymentCallback, initializeConsultation, endConsultation, consultationSuccessful } from '../controllers/consultationController.js'
 import { checkUnSeenMessages } from '../controllers/consultation/messageController.js'
-import { getDoctorAvailability, getDoctorTimeSlotsForDate } from '../controllers/consultation/index.js'
+import { getDoctorAvailability, getDoctorTimeSlotsForDate, sendConsultationAcceptedEmail, sendConsultationStartedEmail } from '../controllers/consultation/index.js'
 
 const router = Router()
 
@@ -14,8 +14,13 @@ router.post('/messages/unseen/:consultationsChat/:senderId/:receiverId', checkUn
 router.post('/end', endConsultation)
 router.post('/successful', consultationSuccessful)
 
+// Email endpoints
+router.post('/email/accepted', sendConsultationAcceptedEmail)
+router.post('/email/started', sendConsultationStartedEmail)
+
 // Doctor availability endpoints
 router.get('/doctors/:doctorId/availability', getDoctorAvailability)
 router.get('/doctors/:doctorId/availability/:date', getDoctorTimeSlotsForDate)
+
 
 export const consultationRoutes = router

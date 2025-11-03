@@ -3,6 +3,7 @@ import { getDBAdmin } from '../../utils/firebase/admin-database.js'
 import logger from '../../utils/logger.js'
 import moment from 'moment'
 import 'moment-timezone'
+import { sendEmail } from '../../services/emailService.js'
 
 // Nigeria timezone constant
 const NIGERIA_TIMEZONE = 'Africa/Lagos'
@@ -18,23 +19,31 @@ interface TimeSlot {
 }
 
 // Helper: convert to Nigeria timezone (used for safety and logging)
-const convertToNigeriaTimezone = (date: Date | string, format?: string): string => {
+const convertToNigeriaTimezone = (
+  date: Date | string,
+  format?: string
+): string => {
   try {
     const momentDate = moment(date)
     if (!momentDate.isValid()) {
       logger.warn('convertToNigeriaTimezone: Invalid date provided', { date })
-      return moment().tz(NIGERIA_TIMEZONE).format(format || 'YYYY-MM-DD HH:mm:ss')
+      return moment()
+        .tz(NIGERIA_TIMEZONE)
+        .format(format || 'YYYY-MM-DD HH:mm:ss')
     }
-    return momentDate.tz(NIGERIA_TIMEZONE).format(format || 'YYYY-MM-DD HH:mm:ss')
+    return momentDate
+      .tz(NIGERIA_TIMEZONE)
+      .format(format || 'YYYY-MM-DD HH:mm:ss')
   } catch (error) {
     logger.error('convertToNigeriaTimezone: Error converting date', {
       date,
       error: error instanceof Error ? error.message : String(error)
     })
-    return moment().tz(NIGERIA_TIMEZONE).format(format || 'YYYY-MM-DD HH:mm:ss')
+    return moment()
+      .tz(NIGERIA_TIMEZONE)
+      .format(format || 'YYYY-MM-DD HH:mm:ss')
   }
 }
-
 
 export const getDoctorAvailability = async (req: Request, res: Response) => {
   const { doctorId } = req.params
@@ -87,7 +96,7 @@ export const getDoctorAvailability = async (req: Request, res: Response) => {
       unavailableSlotsCount: unavailableSlots.length
     })
 
-     const response ={
+    const response = {
       success: true,
       data: {
         dateOptions,
@@ -119,7 +128,8 @@ export const isPastSlotForDate = (
   slotMinutesFromMidnight: number,
   now: moment.Moment
 ): boolean => {
-  const isSameDay = selectedDate.format('YYYY-MM-DD') === now.format('YYYY-MM-DD')
+  const isSameDay =
+    selectedDate.format('YYYY-MM-DD') === now.format('YYYY-MM-DD')
   if (!isSameDay) return false
   const nowMinutes = now.hours() * 60 + now.minutes()
   return slotMinutesFromMidnight <= nowMinutes
@@ -169,7 +179,11 @@ const generateAvailableTimeSlots = (
       const min = minutes % 60
 
       // Format time using moment in Nigeria timezone (display only; selected date drives comparison)
-      const slotTime = moment(selectedDate).tz(NIGERIA_TIMEZONE).hours(hour).minutes(min).seconds(0)
+      const slotTime = moment(selectedDate)
+        .tz(NIGERIA_TIMEZONE)
+        .hours(hour)
+        .minutes(min)
+        .seconds(0)
       const time24 = slotTime.format('HH:mm')
       const slotLabel = slotTime.format('h:mm A')
 
@@ -263,7 +277,6 @@ const generateDateOptions = (doctorAvailableSlots: any) => {
   return dates
 }
 
-
 export const getDoctorTimeSlotsForDate = async (
   req: Request,
   res: Response
@@ -296,10 +309,8 @@ export const getDoctorTimeSlotsForDate = async (
     const doctorAvailableSlots = doctorData.availableSlots || {}
 
     // Generate time slots for the specified date
-    const { availableSlots: timeSlots, unavailableSlots } = generateAvailableTimeSlots(
-      date,
-      doctorAvailableSlots
-    )
+    const { availableSlots: timeSlots, unavailableSlots } =
+      generateAvailableTimeSlots(date, doctorAvailableSlots)
 
     logger.info(
       'getDoctorTimeSlotsForDate: Successfully generated time slots',
@@ -335,5 +346,175 @@ export const getDoctorTimeSlotsForDate = async (
       success: false,
       error: 'Failed to fetch time slots'
     })
+  }
+}
+
+// Send consultation accepted email to patient using template
+export const sendConsultationAcceptedEmail = async (
+  req: Request,
+  res: Response
+) => {
+  const requestId = req.headers['x-request-id'] || 'unknown'
+  try {
+    const { consultationId } = req.body as { consultationId: string }
+
+    if (!consultationId) {
+      return res
+        .status(400)
+        .json({ success: false, error: 'consultationId is required' })
+    }
+
+
+    res.status(200).json({ success: true })
+
+    // Fetch consultation details, then doctor and patient data
+    const consultationRecord = await getDBAdmin('consultations', consultationId)
+    if (!consultationRecord?.data) {
+      return res
+        .status(404)
+        .json({ success: false, error: 'Consultation not found' })
+    }
+
+    const consultation = consultationRecord.data as any
+    const patientRecord = await getDBAdmin('patients', consultation.patientId)
+    const doctorRecord = await getDBAdmin('doctors', consultation.doctorId)
+
+    if (!patientRecord?.data || !doctorRecord?.data) {
+      return res
+        .status(404)
+        .json({ success: false, error: 'Doctor or patient not found' })
+    }
+
+    const patientInfo = patientRecord.data as any
+    const doctorInfo = doctorRecord.data as any
+
+    const email = patientInfo?.email || ''
+    if (!email) {
+      return res
+        .status(400)
+        .json({ success: false, error: 'Patient email not available' })
+    }
+
+    const fullName: string = (patientInfo?.fullName || '').trim()
+    const firstName = fullName?.split(' ')[0] || 'Patient'
+    const doctorName = doctorInfo?.fullName || 'Doctor'
+    const specialty = doctorInfo?.careerDetails?.specialty || ''
+    const date = consultation?.date || ''
+    const time = consultation?.time || ''
+    const timezone = 'WAT'
+
+    await sendEmail(
+      email,
+      `Consultation confirmed with Dr. ${doctorName || ''}`.trim(),
+      'consultation-accepted',
+      {
+        firstName,
+        doctorName,
+        specialty,
+        date,
+        time,
+        timezone,
+        consultationId
+      }
+    )
+
+    logger.info('sendConsultationAcceptedEmail: Email sent', {
+      requestId,
+      email: (email || '').replace(/(.{2}).*(@.*)/, '$1***$2'),
+      consultationId
+    })
+
+  } catch (error: any) {
+    logger.error('sendConsultationAcceptedEmail: Failed', {
+      requestId,
+      error: error?.message || String(error)
+    })
+    return res
+      .status(500)
+      .json({ success: false, error: 'Failed to send email' })
+  }
+}
+
+// Send consultation started email to patient using template
+export const sendConsultationStartedEmail = async (
+  req: Request,
+  res: Response
+) => {
+  const requestId = req.headers['x-request-id'] || 'unknown'
+  try {
+    const { consultationId } = req.body as { consultationId: string }
+
+    if (!consultationId) {
+      return res
+        .status(400)
+        .json({ success: false, error: 'consultationId is required' })
+    }
+
+
+        res.status(200).json({ success: true })
+
+        
+    // Fetch consultation, patient, and doctor data
+    const consultationRecord = await getDBAdmin('consultations', consultationId)
+    if (!consultationRecord?.data) {
+      return res
+        .status(404)
+        .json({ success: false, error: 'Consultation not found' })
+    }
+
+    const consultation = consultationRecord.data as any
+    const patientRecord = await getDBAdmin('patients', consultation.patientId)
+    const doctorRecord = await getDBAdmin('doctors', consultation.doctorId)
+
+    if (!patientRecord?.data || !doctorRecord?.data) {
+      return res
+        .status(404)
+        .json({ success: false, error: 'Doctor or patient not found' })
+    }
+
+    const patientInfo = patientRecord.data as any
+    const doctorInfo = doctorRecord.data as any
+
+    const email = patientInfo?.email || ''
+    if (!email) {
+      return res
+        .status(400)
+        .json({ success: false, error: 'Patient email not available' })
+    }
+
+
+    const fullName: string = (patientInfo?.fullName || '').trim()
+    const firstName = fullName?.split(' ')[0] || 'Patient'
+    const doctorName = doctorInfo?.fullName || 'Doctor'
+    const joinLink = `${
+      process.env.FRONTEND_URL || 'https://medvive.ng'
+    }/patient/chats`
+
+    await sendEmail(
+      email,
+      `Consultation started with Dr. ${doctorName || ''}`.trim(),
+      'consultation-started',
+      {
+        firstName,
+        doctorName,
+        joinLink
+      }
+    )
+
+    logger.info('sendConsultationStartedEmail: Email sent', {
+      requestId,
+      email: (email || '').replace(/(.{2}).*(@.*)/, '$1***$2'),
+      consultationId
+    })
+
+
+  } catch (error: any) {
+    logger.error('sendConsultationStartedEmail: Failed', {
+      requestId,
+      error: error?.message || String(error)
+    })
+    return res
+      .status(500)
+      .json({ success: false, error: 'Failed to send email' })
   }
 }

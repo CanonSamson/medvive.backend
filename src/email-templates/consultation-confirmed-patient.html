@@ -4,10 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome Email</title>
+    <title>Signup OTP Verified</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 </head>
-
 
 <body
     style="margin: 0; padding: 20px 0; font-family: 'Inter', sans-serif; background-color: #F9F9FA; line-height: 1.5; min-height: 100vh;">
@@ -25,44 +24,44 @@
 
     <div
         style="background-color: white; margin: 0 auto 20px auto; padding: 50px 15px 30px; width: calc(100% - 60px); max-width: 470px;">
+
         <p
             style="color: #969696; font-size: 14px; width: 80%; display: flex; margin-top: 4px; font-family: 'Inter', sans-serif;">
-            Welcome to Medvive, {{fullName}} — we're excited to have you on board!
+            Hi,
         </p>
 
         <p
             style="color: #969696; font-size: 14px; width: 80%; display: flex; margin-top: 4px; font-family: 'Inter', sans-serif;">
-            To get started, please verify your email address by clicking the button below:
+            Your payment for the consultation has been successfully received.
+        </p>
+        <p
+            style="color: #969696; font-size: 14px; width: 80%; display: flex; margin-top: 4px; font-family: 'Inter', sans-serif;">
+            Your doctor will review and accept your consultation shortly. Once confirmed, you’ll receive a notification.
         </p>
 
-        <div>
-            <p
-                style="padding: 40px 0px 14px 0px; color: #1442BB; font-size: 24px; font-weight: 600; font-family: 'Inter', sans-serif;">
-                {{otp}}</p>
-            <p
-                style="font-size: 12px; color: #969696; font-weight: 400; margin-bottom: 14px; font-family: 'Inter', sans-serif;">
-                The OTP will expire in {{expiryMinutes}} minutes
+        <div style="width: 90%; margin: 16px auto; padding-top: 12px;">
+            <p style="color: #222222; font-size: 16px; font-weight: 600; font-family: 'Inter', sans-serif; margin: 0 0 8px 0;">
+                Consultation Summary
             </p>
+            <ul style="list-style: none; padding: 0; margin: 0; color: #5A5A5A; font-size: 14px; font-family: 'Inter', sans-serif;">
+                <li style="margin-bottom: 6px;">Doctor: Dr. {{doctorName}}</li>
+                <li style="margin-bottom: 6px;">Specialty: {{specialty}}</li>
+                <li style="margin-bottom: 6px;">Amount Paid: {{amountPaid}}</li>
+                <li style="margin-bottom: 6px;">Reference ID: {{transactionId}}</li>
+            </ul>
         </div>
 
-        <div
-            style="border-top: 1px solid black; padding-top: 14px; display: block; width: 90%; position: relative; justify-content: flex-start; margin: 0px 0px;">
-            <p style="color: #969696; font-size: 14px; padding-bottom: 14px; font-family: 'Inter', sans-serif;">
-                If the code above did not work for you, use the button below to verify your account
-            </p>
-
-            <p style="color: #969696; font-size: 14px; padding-bottom: 14px; font-family: 'Inter', sans-serif;">
-                Thank you for choosing Medvive — where healthcare meets simplicity
-            </p>
-
-        </div>
-
-
+        <p
+            style="color: #969696; font-size: 14px; width: 80%; display: flex; margin-top: 4px; font-family: 'Inter', sans-serif;">
+            Thank you for choosing Medvive. We’ll keep you updated every step of the way.
+        </p>
 
         <p style="color: #969696; padding-top: 26px; font-family: 'Inter', sans-serif;">
             Warm regards, <br />
             The Medvive Team
         </p>
+
+
     </div>
     </div>
 </body>

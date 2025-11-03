@@ -116,7 +116,7 @@ export const handleSendOTP = asyncWrapper(
       logger.debug('handleSendOTP: Sending OTP email', {
         requestId,
         email: email.replace(/(.{2}).*(@.*)/, '$1***$2'),
-        template: 'otp-verification'
+        template: 'welcome-email'
       })
 
       res.status(201).json({
@@ -128,7 +128,7 @@ export const handleSendOTP = asyncWrapper(
         await sendEmail(
           email,
           'Email Verification - Your OTP Code',
-          'otp-verification',
+          'welcome-email',
           {
             fullName: fullName || 'User',
             otp: otp,
@@ -158,6 +158,71 @@ export const handleSendOTP = asyncWrapper(
         error: 'Internal server error',
         success: false
       })
+    }
+  }
+)
+
+// Token-only sign-in: validates JWT and returns basic user profile
+export const handleTokenSignIn = asyncWrapper(
+  async (req: Request, res: Response) => {
+    try {
+      // Middleware verifyUserToken should have set req.id and req.role
+      const userId = (req as any).id as string
+      const role = (req as any).role as 'PATIENT' | 'DOCTOR'
+
+      if (!userId || !role) {
+        return res.status(401).json({ success: false, error: 'Unauthorized: token invalid' })
+      }
+
+      // Load user from Firebase based on role
+      const collection = role === 'PATIENT' ? 'patients' : 'doctors'
+      const record = await getDBAdmin(collection, userId)
+      if (!record?.data) {
+        return res.status(404).json({ success: false, error: `${role} not found` })
+      }
+
+      const user = record.data as any
+      const fullName = (user?.fullName || user?.name || '').trim()
+      const email = user?.email || user?.medviveEmail || ''
+
+      return res.status(200).json({
+        success: true,
+        user: {
+          id: userId,
+          role,
+          fullName,
+          email,
+        }
+      })
+    } catch (error) {
+      return res.status(500).json({ success: false, error: 'Failed to sign in with token' })
+    }
+  }
+)
+
+// Token sign-out: acknowledge sign-out (JWT is stateless)
+export const handleTokenSignOut = asyncWrapper(
+  async (req: Request, res: Response) => {
+    try {
+      const userId = (req as any).id as string | undefined
+      const role = (req as any).role as ('PATIENT' | 'DOCTOR') | undefined
+
+      // For JWT-based auth, server-side sign-out is an acknowledgement.
+      // Clients should delete the token; we log the event for auditing.
+      logger.info('handleTokenSignOut: Sign-out acknowledged', {
+        userId: userId || 'unknown',
+        role: role || 'unknown'
+      })
+
+      return res.status(200).json({
+        success: true,
+        message: 'Signed out successfully'
+      })
+    } catch (error) {
+      logger.error('handleTokenSignOut: Failed to sign out', {
+        error: error instanceof Error ? error.message : error
+      })
+      return res.status(500).json({ success: false, error: 'Failed to sign out' })
     }
   }
 )
@@ -381,13 +446,14 @@ export const handleVerifyOTP = asyncWrapper(
           {
             requestId,
             email: email.replace(/(.{2}).*(@.*)/, '$1***$2'),
-            template: 'default'
+            template: 'signup-otp-verified'
           }
         )
 
-        await sendEmail(email, 'Email Verified', 'default', {
-          title: 'Email Verified',
-          text: 'Your email has been successfully verified. You can now continue using Medvive.'
+        await sendEmail(email, 'Email Verified', 'signup-otp-verified', {
+          title: 'Signup OTP Verified',
+          text: 'Your email has been successfully verified. You can now continue using Medvive.',
+
         })
 
         logger.info(
@@ -531,3 +597,8 @@ export const handleGetOTPTimeLeft = asyncWrapper(
     }
   }
 )
+
+
+
+
+
