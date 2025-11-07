@@ -16,18 +16,20 @@ import { discordBotService } from '../services/discord-bot/index.js'
 import { v4 as uuidv4 } from 'uuid'
 
 export const initializeConsultation = asyncWrapper(async (req, res) => {
-  const { patientId, doctorId, date, time, patientSymptoms } = req.body as {
-    date: string
-    time: string
-    doctorId: string
-    patientId: string
-    patientSymptoms: {
-      symptoms: string
-      otherSymptoms: string
-      duration: string
-      moreDetails: string
+  const { patientId, doctorId, date, time, patientSymptoms, referralCode } =
+    req.body as {
+      date: string
+      time: string
+      doctorId: string
+      patientId: string
+      patientSymptoms: {
+        symptoms: string
+        otherSymptoms: string
+        duration: string
+        moreDetails: string
+      }
+      referralCode?: string
     }
-  }
 
   const consultationId = uuidv4()
   const timestamp = new Date().toISOString()
@@ -129,7 +131,8 @@ export const initializeConsultation = asyncWrapper(async (req, res) => {
       timestamp,
       consultationFee: Number(consultationFee.consultationFee),
       medviveFee: Number(consultationFee.medviveFee),
-      currency: 'NGN'
+      currency: 'NGN',
+      ...(referralCode && { referralCode: referralCode })
     }
   }
   const orderId = uuidv4()
@@ -166,6 +169,7 @@ export const initializeConsultation = asyncWrapper(async (req, res) => {
     paymentMethod: 'bank_transfer',
     virtualAccountData: result.success ? result.data : null,
     transactionId: result?.data?.transactionId,
+    ...(referralCode && { referralCode: referralCode }),
     consultationDetails: {
       date,
       time,
@@ -484,9 +488,11 @@ export const checkConsultationPaymentStatus = asyncWrapper(async (req, res) => {
                 patientName: patientInfo?.fullName || '',
                 transactionId: transactionData.transactionId,
                 specialty: doctorInfo?.careerDetails?.specialty || '',
-                amountPaid: `N ${transactionData.consultationDetails?.amount || 0} `,
+                amountPaid: `N ${
+                  transactionData.consultationDetails?.amount || 0
+                } `,
                 date: transactionData.consultationDetails?.date || '',
-                time: transactionData.consultationDetails?.time || '',
+                time: transactionData.consultationDetails?.time || ''
               }
             )
             logger.info('Patient success email sent', {
