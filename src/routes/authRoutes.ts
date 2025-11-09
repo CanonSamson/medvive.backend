@@ -6,6 +6,10 @@ import {
   handleTokenSignIn,
   handleTokenSignOut
 } from '../controllers/authController.js'
+import {
+  forceResetUserPassword,
+  sendPasswordResetEmail
+} from '../controllers/auth/passwordResetController.js'
 import { verifyUserToken } from '../middlewares/authMiddleware.js'
 
 const router = Router()
@@ -17,5 +21,10 @@ router.get('/get-otp-time-left', handleGetOTPTimeLeft)
 router.post('/token-signin', verifyUserToken, handleTokenSignIn)
 // Token sign-out: requires Authorization Bearer token (acknowledgement)
 router.post('/token-signout', verifyUserToken, handleTokenSignOut)
+
+// Password reset: generate Firebase reset link and email it
+router.post('/password/reset-link', sendPasswordResetEmail)
+// Force reset password by admin or authenticated service
+router.post('/password/force-reset', verifyUserToken, forceResetUserPassword)
 
 export const authRoutes = router
