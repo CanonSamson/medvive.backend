@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { checkConsultationPaymentStatus, consultationPaymentCallback, initializeConsultation, endConsultation, consultationSuccessful } from '../controllers/consultationController.js'
 import { checkUnSeenMessages } from '../controllers/consultation/messageController.js'
 import { getDoctorAvailability, getDoctorTimeSlotsForDate, sendConsultationAcceptedEmail, sendConsultationStartedEmail } from '../controllers/consultation/index.js'
+import { triggerPendingConsultationPaymentReminder } from '../controllers/reminder/consultationReminder.js'
 
 const router = Router()
 
@@ -21,6 +22,8 @@ router.post('/email/started', sendConsultationStartedEmail)
 // Doctor availability endpoints
 router.get('/doctors/:doctorId/availability', getDoctorAvailability)
 router.get('/doctors/:doctorId/availability/:date', getDoctorTimeSlotsForDate)
+router.post('/reminder/trigger', triggerPendingConsultationPaymentReminder)
+
 
 
 export const consultationRoutes = router

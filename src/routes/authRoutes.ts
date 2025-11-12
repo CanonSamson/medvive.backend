@@ -8,8 +8,7 @@ import {
 } from '../controllers/authController.js'
 import {
   forceResetUserPassword,
-  sendPasswordResetEmail,
-  passwordResetRedirect
+  sendPasswordResetEmail
 } from '../controllers/auth/passwordResetController.js'
 import { verifyUserToken } from '../middlewares/authMiddleware.js'
 
@@ -25,8 +24,6 @@ router.post('/token-signout', verifyUserToken, handleTokenSignOut)
 
 // Password reset: generate Firebase reset link and email it
 router.post('/password/reset-link', sendPasswordResetEmail)
-// Password reset completion redirect (must be whitelisted in Firebase Auth)
-router.get('/password/reset-complete', passwordResetRedirect)
 // Force reset password by admin or authenticated service
 router.post('/password/force-reset', verifyUserToken, forceResetUserPassword)
 

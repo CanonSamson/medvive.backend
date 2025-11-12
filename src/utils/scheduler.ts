@@ -1,8 +1,9 @@
 import { scheduleJob, Job } from 'node-schedule'
 import { getAdminFirestore } from './firebase/admin.js'
-import { updateDBAdmin } from './firebase/admin-database.js'
+import { updateDBAdmin, createDBAdmin } from './firebase/admin-database.js'
 import logger from './logger.js'
-import { sendEmail, handleCancelJobs } from '../controllers/consultation/messageController.js'
+import { sendEmail as sendUnseenMessageEmail } from '../controllers/consultation/messageController.js'
+import { sendPendingConsultationPaymentReminder } from './scheduler/pendingReminder.js'
 
 const restoredJobs: Record<string, Job> = {}
 
@@ -30,7 +31,7 @@ export const restoreUnSeenMessageJobs = async (): Promise<void> => {
 
       const job = scheduleJob(scheduleDate, async (fireDate: Date) => {
         const payload = data.payload || {}
-        const response = await sendEmail(payload)
+        const response = await sendUnseenMessageEmail(payload)
         logger.info('Restored unseen message job executed', {
           id,
           fireDate,
@@ -40,8 +41,6 @@ export const restoreUnSeenMessageJobs = async (): Promise<void> => {
           status: 'executed',
           executedAt: new Date().toISOString()
         }).catch(() => {})
-        // cancel any controller-side job tracking as well
-        handleCancelJobs(id, id)
         // remove local restored job reference
         if (restoredJobs[id]) {
           restoredJobs[id].cancel()
@@ -58,5 +57,121 @@ export const restoreUnSeenMessageJobs = async (): Promise<void> => {
     })
   } catch (error: any) {
     logger.error('Failed to restore unseen-message jobs', { error })
+  }
+}
+
+// Schedule a 10-minute check for a pending consultation transaction
+export const schedulePendingTransactionCheck = async (
+  transactionId: string
+): Promise<void> => {
+  try {
+    if (!transactionId || typeof transactionId !== 'string') {
+      logger.warn('schedulePendingTransactionCheck: Invalid transactionId', {
+        transactionId
+      })
+      return
+    }
+
+    const id = `pending-tx-${transactionId}`
+    const runDate = new Date(Date.now() + 10 * 60 * 1000)
+
+    // Cancel any existing local job ref
+    if (restoredJobs[id]) {
+      restoredJobs[id].cancel()
+      delete restoredJobs[id]
+    }
+
+    const job = scheduleJob(runDate, async (fireDate: Date) => {
+      try {
+        await sendPendingConsultationPaymentReminder(transactionId)
+
+        await updateDBAdmin('scheduled-jobs', id, {
+          status: 'executed',
+          executedAt: new Date().toISOString()
+        }).catch(() => {})
+      } finally {
+        if (restoredJobs[id]) {
+          restoredJobs[id].cancel()
+          delete restoredJobs[id]
+        }
+      }
+    })
+
+    restoredJobs[id] = job as Job
+
+    await createDBAdmin('scheduled-jobs', id, {
+      type: 'pending-transaction-check',
+      runAt: runDate.toISOString(),
+      status: 'scheduled',
+      payload: { transactionId },
+      createdAt: new Date().toISOString()
+    })
+
+    logger.info('Pending transaction job scheduled and persisted', {
+      id,
+      runAt: runDate.toISOString(),
+      transactionId
+    })
+  } catch (error: any) {
+    logger.error('schedulePendingTransactionCheck: Failed to schedule job', {
+      error
+    })
+  }
+}
+
+export const restorePendingTransactionJobs = async (): Promise<void> => {
+  try {
+    const db = getAdminFirestore()
+    const snapshot = await db
+      .collection('scheduled-jobs')
+      .where('type', '==', 'pending-transaction-check')
+      .where('status', '==', 'scheduled')
+      .get()
+
+    const now = new Date()
+
+    snapshot.forEach(doc => {
+      const data = doc.data() as any
+      const runAt = new Date(data.runAt)
+      const scheduleDate = runAt > now ? runAt : new Date(now.getTime() + 10000)
+      const id = doc.id
+
+      if (restoredJobs[id]) {
+        restoredJobs[id].cancel()
+        delete restoredJobs[id]
+      }
+
+      const job = scheduleJob(scheduleDate, async (fireDate: Date) => {
+        try {
+          const payload = data.payload || {}
+          const transactionId = payload?.transactionId as string
+          await sendPendingConsultationPaymentReminder(transactionId)
+
+          logger.info('Restored pending transaction job executed', {
+            id,
+            fireDate
+          })
+
+          await updateDBAdmin('scheduled-jobs', id, {
+            status: 'executed',
+            executedAt: new Date().toISOString()
+          }).catch(() => {})
+        } finally {
+          if (restoredJobs[id]) {
+            restoredJobs[id].cancel()
+            delete restoredJobs[id]
+          }
+        }
+      })
+
+      restoredJobs[id] = job as Job
+      logger.info('Restored pending transaction job scheduled', { id, scheduleDate })
+    })
+
+    logger.info('Restore routine completed for pending-transaction-check jobs', {
+      count: snapshot.size
+    })
+  } catch (error: any) {
+    logger.error('Failed to restore pending-transaction-check jobs', { error })
   }
 }

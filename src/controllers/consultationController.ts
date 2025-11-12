@@ -14,6 +14,7 @@ import { sendEmail } from '../services/emailService.js'
 import { consultationPaymentService } from '../services/consultation/payment.js'
 import { discordBotService } from '../services/discord-bot/index.js'
 import { v4 as uuidv4 } from 'uuid'
+import { schedulePendingTransactionCheck } from '../utils/scheduler.js'
 
 export const initializeConsultation = asyncWrapper(async (req, res) => {
   const { patientId, doctorId, date, time, patientSymptoms, referralCode } =
@@ -65,7 +66,16 @@ export const initializeConsultation = asyncWrapper(async (req, res) => {
       .where('active', '==', true)
       .get()
 
-    if (!pendingConsultationsQuery.empty) {
+    const pendingConsultationsTransactionQuery = await db
+      .collection('consultation-transactions')
+      .where('patientId', '==', patientId)
+      .where('status', '==', 'PENDING')
+      .get()
+
+    if (
+      !pendingConsultationsQuery.empty ||
+      !pendingConsultationsTransactionQuery?.empty
+    ) {
       const pendingConsultations = pendingConsultationsQuery.docs.map(
         (doc: any) => ({
           id: doc.id,
@@ -191,6 +201,21 @@ export const initializeConsultation = asyncWrapper(async (req, res) => {
       consultationId,
       transactionStatus: 'pending'
     })
+
+    // Schedule a 10-minute check to remind patient if still pending
+    try {
+      await schedulePendingTransactionCheck(
+        transactionData?.transactionId as string
+      )
+      logger.info('Scheduled pending transaction reminder', {
+        transactionId: transactionData?.transactionId
+      })
+    } catch (scheduleErr) {
+      logger.error('Failed to schedule pending transaction reminder', {
+        transactionId: transactionData?.transactionId,
+        error: (scheduleErr as any)?.message || scheduleErr
+      })
+    }
   } catch (firebaseError) {
     logger.error('Failed to save transaction to Firebase', {
       orderId,

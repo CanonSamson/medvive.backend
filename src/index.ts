@@ -19,6 +19,7 @@ import { restoreUnSeenMessageJobs } from './utils/scheduler.js'
 import passport from 'passport'
 import './services/passport.strategies'
 import session from 'express-session'
+import { sendEmail } from './services/emailService.js'
 // import admin from 'firebase-admin'
 
 // Configure logging
@@ -175,7 +176,6 @@ async function startServer () {
         }
       }
     )
-
     // Apply error handling
     app.use(errorHandler)
 
