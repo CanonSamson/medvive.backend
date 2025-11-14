@@ -19,7 +19,6 @@ import { restoreUnSeenMessageJobs } from './utils/scheduler.js'
 import passport from 'passport'
 import './services/passport.strategies'
 import session from 'express-session'
-import { sendEmail } from './services/emailService.js'
 import { doctorRoutes } from './routes/doctorRoutes.js'
 // import admin from 'firebase-admin'
 
@@ -110,10 +109,9 @@ async function startServer () {
     // Create HTTP server and Socket.IO instance
     const server = http.createServer(app)
     const io = new Server(server, {
-      path: '/ws/',
       cors: {
         origin: '*',
-        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+        methods: ['GET', 'POST']
       }
     })
     // Initialize socket handlers

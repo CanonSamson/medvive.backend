@@ -26,8 +26,9 @@ export class DoctorService {
     ServiceResult<{ doctorId: string; email: string; fullName: string }>
   > {
     try {
-      const { email, password, fullName } = doctor
+      const { email: doctorEmail, password, fullName } = doctor
 
+      const email = doctorEmail.toLowerCase().trim()
       if (!email || !password) {
         return {
           success: false,

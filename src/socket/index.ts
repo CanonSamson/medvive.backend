@@ -9,59 +9,69 @@ export default (
 ) => {
   console.log('socket init...')
   io.on('connection', socket => {
-    const userId = socket.handshake.query.userId as string
-    if (userId != 'undefined') {
+    const rawUserId = socket.handshake.query.userId
+    const userId = typeof rawUserId === 'string' && rawUserId.trim().length > 0 ? rawUserId.trim() : undefined
+
+    if (userId) {
       console.log(`${userId} connected`)
-      socket.join(userId)
+      try {
+        socket.join(userId)
+      } catch (err) {
+        console.error('Failed to join user room:', err)
+      }
+    } else {
+      console.log(`anonymous user connected (socketId=${socket.id})`)
+    }
 
-      socket.on('listen:events', async (key: string) => {
-        console.log('chatroomId', key)
-        try {
-          await socket.join(key)
-        } catch (error) {
-          console.error('Error in listen:events:', error)
-        }
-      })
+    socket.on('listen:events', async (key: string) => {
+      console.log('chatroomId', key)
+      try {
+        await socket.join(key)
+      } catch (error) {
+        console.error('Error in listen:events:', error)
+      }
+    })
 
-      socket.on('unlisten:events', async (key: string) => {
-        console.log('chatroomId', key)
-        try {
-          await socket.leave(key)
-        } catch (error) {
-          console.error('Error in unlisten:events:', error)
-        }
-      })
+    socket.on('unlisten:events', async (key: string) => {
+      console.log('chatroomId', key)
+      try {
+        await socket.leave(key)
+      } catch (error) {
+        console.error('Error in unlisten:events:', error)
+      }
+    })
 
-      // Handle typing notification
-      socket.on('user-is-typing', ({ id, currentUser, socketId }) => {
-        // Notify all users in the chatroom about typing status
-        socket.to(socketId).emit('is-typing', { id, user: currentUser })
-      })
+    // Handle typing notification
+    socket.on('user-is-typing', ({ id, currentUser, socketId }) => {
+      // Notify all users in the chatroom about typing status
+      socket.to(socketId).emit('is-typing', { id, user: currentUser })
+    })
 
-      socket.on('user-stopped-typing', ({ id, currentUser, socketId }) => {
-        // Notify all users in the chatroom about typing status
-        socket.to(socketId).emit('stopped-typing', { id, user: currentUser })
-      })
+    socket.on('user-stopped-typing', ({ id, currentUser, socketId }) => {
+      // Notify all users in the chatroom about typing status
+      socket.to(socketId).emit('stopped-typing', { id, user: currentUser })
+    })
 
-      socket.on('user:online-events', userId => {
-        onlineUsers[userId] = true
-        console.log('user_online')
-        io.emit('user:online-events:listen', onlineUsers)
-      })
+    socket.on('user:online-events', userId => {
+      onlineUsers[userId] = true
+      console.log('user_online')
+      io.emit('user:online-events:listen', onlineUsers)
+    })
 
-      socket.on('user:offline-events', userId => {
-        onlineUsers[userId] = false
-        console.log('user_offline')
-        io.emit('user:online-events:listen', onlineUsers)
-      })
+    socket.on('user:offline-events', userId => {
+      onlineUsers[userId] = false
+      console.log('user_offline')
+      io.emit('user:online-events:listen', onlineUsers)
+    })
 
-      
-
-      socket.on('disconnect', () => {
+    socket.on('disconnect', () => {
+      if (userId) {
         console.log(`${userId} disconnected`)
         io.emit('user:online-events:listen', { userId, online: false })
-      })
-    }
+      } else {
+        console.log(`anonymous user disconnected (socketId=${socket.id})`)
+      }
+    })
   })
 
   return io

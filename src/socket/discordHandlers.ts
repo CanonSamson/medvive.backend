@@ -16,7 +16,6 @@ export const discordHandlers = (io: Server, socket: Socket) => {
       )
     }
   })
-
   socket.on('new-consultation', data => {
     const channel = discordClient.channels.cache.get('1316810844050292870')
     if (channel && channel.type === ChannelType.GuildText) {
