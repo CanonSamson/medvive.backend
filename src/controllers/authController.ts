@@ -133,7 +133,8 @@ export const handleSendOTP = asyncWrapper(
             fullName: fullName || 'User',
             otp: otp,
             expiryMinutes: '5'
-          }
+          },
+          'onboarding'
         )
 
         logger.info('handleSendOTP: OTP email sent successfully', {
@@ -171,14 +172,18 @@ export const handleTokenSignIn = asyncWrapper(
       const role = (req as any).role as 'PATIENT' | 'DOCTOR'
 
       if (!userId || !role) {
-        return res.status(401).json({ success: false, error: 'Unauthorized: token invalid' })
+        return res
+          .status(401)
+          .json({ success: false, error: 'Unauthorized: token invalid' })
       }
 
       // Load user from Firebase based on role
       const collection = role === 'PATIENT' ? 'patients' : 'doctors'
       const record = await getDBAdmin(collection, userId)
       if (!record?.data) {
-        return res.status(404).json({ success: false, error: `${role} not found` })
+        return res
+          .status(404)
+          .json({ success: false, error: `${role} not found` })
       }
 
       const user = record.data as any
@@ -191,11 +196,13 @@ export const handleTokenSignIn = asyncWrapper(
           id: userId,
           role,
           fullName,
-          email,
+          email
         }
       })
     } catch (error) {
-      return res.status(500).json({ success: false, error: 'Failed to sign in with token' })
+      return res
+        .status(500)
+        .json({ success: false, error: 'Failed to sign in with token' })
     }
   }
 )
@@ -222,7 +229,9 @@ export const handleTokenSignOut = asyncWrapper(
       logger.error('handleTokenSignOut: Failed to sign out', {
         error: error instanceof Error ? error.message : error
       })
-      return res.status(500).json({ success: false, error: 'Failed to sign out' })
+      return res
+        .status(500)
+        .json({ success: false, error: 'Failed to sign out' })
     }
   }
 )
@@ -450,11 +459,16 @@ export const handleVerifyOTP = asyncWrapper(
           }
         )
 
-        await sendEmail(email, 'Email Verified', 'signup-otp-verified', {
-          title: 'Signup OTP Verified',
-          text: 'Your email has been successfully verified. You can now continue using Medvive.',
-
-        })
+        await sendEmail(
+          email,
+          'Email Verified',
+          'signup-otp-verified',
+          {
+            title: 'Signup OTP Verified',
+            text: 'Your email has been successfully verified. You can now continue using Medvive.'
+          },
+          'onboarding'
+        )
 
         logger.info(
           'handleVerifyOTP: Verification confirmation email sent successfully',
@@ -597,8 +611,3 @@ export const handleGetOTPTimeLeft = asyncWrapper(
     }
   }
 )
-
-
-
-
-

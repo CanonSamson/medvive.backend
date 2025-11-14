@@ -2,12 +2,14 @@ import { SentMessageInfo } from 'nodemailer'
 import { parseTemplate } from '../utils/templateParser.js'
 import logger from '../utils/logger.js'
 import { Resend } from 'resend'
+import { EmailFrom } from '../utils/contant/index.js'
 
 export const sendEmail = async (
   to: string,
   subject: string,
   templateName: string,
-  placeholders: { [key: string]: string }
+  placeholders: { [key: string]: string },
+  from: EmailFrom = 'noreply'
 ): Promise<SentMessageInfo> => {
   logger.info('Starting email send process', {
     to,
@@ -27,7 +29,9 @@ export const sendEmail = async (
     logger.debug('Template parsed successfully', { templateName })
 
     const apiKey = process.env.RESEND_API_KEY
-    const fromEmail = process.env.EMAIL_FROM
+    const fromEmail =
+      `${from}@${process.env.DOMAIN_NAME || 'medvive.ng'}` ||
+      process.env.EMAIL_FROM
     const fromName = process.env.EMAIL_FROM_NAME || 'Medvive'
 
     if (!apiKey) {

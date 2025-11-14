@@ -1,6 +1,6 @@
 import type { ApprovalPayload, WithdrawalApprovalPayload } from './types.js'
 import { sendApprovalPrompt, sendWithdrawalApprovalPrompt } from './prompts.js'
-import { registerApprovalButtonsHandler } from './handlers.js'
+import { registerApprovalButtonsHandler, registerDoctorOnboardingHandler } from './handlers.js'
 
 export class DiscordBotService {
   async sendApprovalPrompt (
@@ -22,8 +22,14 @@ export class DiscordBotService {
     else return null
   }
 
+  
+
   registerApprovalButtonsHandler () {
     return registerApprovalButtonsHandler()
+  }
+
+  registerDoctorOnboardingHandler () {
+    return registerDoctorOnboardingHandler()
   }
 }
 

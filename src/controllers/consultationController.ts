@@ -283,7 +283,8 @@ export const initializeConsultation = asyncWrapper(async (req, res) => {
           }. Bank code: ${
             result?.data?.virtualBankCode || 'N/A'
           }. Transaction ID: ${result?.data?.transactionId || orderId}.`
-        }
+        },
+        "consultation"
       )
       logger.info('Initialization email sent to patient', {
         patientId,
@@ -506,7 +507,8 @@ export const checkConsultationPaymentStatus = asyncWrapper(async (req, res) => {
                 } at ${
                   transactionData.consultationDetails?.time
                 }. Consultation ID: ${transactionData.consultationId}.`
-              }
+              },
+               "consultation"
             )
             logger.info('Doctor success email sent', {
               requestId,
@@ -539,7 +541,8 @@ export const checkConsultationPaymentStatus = asyncWrapper(async (req, res) => {
                 } `,
                 date: transactionData.consultationDetails?.date || '',
                 time: transactionData.consultationDetails?.time || ''
-              }
+              },
+              "consultation"
             )
             logger.info('Patient success email sent', {
               requestId,

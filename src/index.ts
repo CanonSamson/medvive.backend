@@ -20,6 +20,7 @@ import passport from 'passport'
 import './services/passport.strategies'
 import session from 'express-session'
 import { sendEmail } from './services/emailService.js'
+import { doctorRoutes } from './routes/doctorRoutes.js'
 // import admin from 'firebase-admin'
 
 // Configure logging
@@ -125,6 +126,7 @@ async function startServer () {
     app.use('/v1/api/payments/alatpay', alatPayRoutes)
     app.use('/v1/api/consultation', consultationRoutes)
     app.use('/v1/api/wallets', walletRoutes)
+    app.use('/v1/api/doctors', doctorRoutes)
 
     app.get('/health', healthCheck)
     app.get('/', (_req, res) => {

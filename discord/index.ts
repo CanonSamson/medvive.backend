@@ -17,4 +17,5 @@ discordClient.on('clientReady', () => {
   // eslint-disable-next-line no-console
   console.log(`Discord client logged in as ${discordClient.user?.tag}`)
   discordBotService.registerApprovalButtonsHandler()
+  discordBotService.registerDoctorOnboardingHandler()
 })

@@ -8,7 +8,7 @@ export const sendWelcomeEmail = asyncWrapper(async (req, res) => {
     await sendEmail(email, 'Welcome to Our Service', 'signup-otp-verified', {
       firstName,
       otp
-    })
+    },'onboarding')
     res.status(200).json({ message: 'Welcome email sent successfully!' })
   } catch (error) {
     res.status(500).json({ message: 'Failed to send email', error })
@@ -21,7 +21,7 @@ export const sendOtpVerifiedEmail = asyncWrapper(async (req, res) => {
   try {
     await sendEmail(email, 'Welcome', 'welcome-email', {
       firstName
-    })
+    }, 'onboarding')
     res.status(200).json({ message: 'Welcome email sent successfully!' })
   } catch (error) {
     res.status(500).json({ message: 'Failed to send email', error })
@@ -32,7 +32,7 @@ export const sendForgetPasswordEmail = asyncWrapper(async (req, res) => {
   const { email, link } = req.body
 
   try {
-    await sendEmail(email, 'Forgot Password', 'forgot-password', { link })
+    await sendEmail(email, 'Forgot Password', 'forgot-password', { link }, 'onboarding')
     res.status(200).json({ message: 'Password reset email sent successfully!' })
   } catch (error) {
     res.status(500).json({ message: 'Failed to send email', error })
